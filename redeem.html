@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>菠萝小铺 — 卡密兑换</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream: #faf7f2;
+  --cream2: #f4efe6;
+  --cream3: #ede6d9;
+  --white: #ffffff;
+  --border: #e8e0d0;
+  --border2: #d4c9b5;
+  --text: #2c2416;
+  --text2: #6b5e4a;
+  --text3: #a8977e;
+  --accent: #e8a020;
+  --accent2: #f0b535;
+  --accent-light: #fef3dc;
+  --accent-border: #f5d48a;
+  --green: #2d7a45;
+  --green-light: #ebf5ef;
+  --green-border: #b8dfc4;
+  --blue: #2563a8;
+  --blue-light: #eff4fc;
+  --red: #c94040;
+  --red-light: #fdf0f0;
+  --red-border: #f5c6c6;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 2px 16px rgba(44,36,22,0.07);
+  --shadow-lg: 0 8px 40px rgba(44,36,22,0.12);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--cream);
+  color: var(--text);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+header {
+  background: rgba(250,247,242,0.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2.5rem;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.logo-wrap { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.logo-icon {
+  width: 36px; height: 36px; background: var(--accent);
+  border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  font-size: 20px; box-shadow: 0 2px 8px rgba(232,160,32,0.3);
+}
+.logo-text { font-family: 'Noto Serif SC', serif; font-size: 18px; font-weight: 600; color: var(--text); }
+.back-btn {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--text2);
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: 100px; padding: 6px 16px; cursor: pointer;
+  text-decoration: none; transition: all 0.15s;
+}
+.back-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* TABS */
+.page-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--white);
+  padding: 0 2.5rem;
+}
+.page-tab {
+  padding: 14px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text3);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.15s;
+}
+.page-tab:hover { color: var(--text2); }
+.page-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* MAIN */
+main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+
+/* CARDS */
+.card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem;
+  box-shadow: var(--shadow);
+}
+.card-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.card-sub { font-size: 13px; color: var(--text2); margin-bottom: 1.75rem; }
+
+/* FORM */
+.form-label { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 7px; display: block; letter-spacing: 0.03em; }
+.form-input {
+  width: 100%;
+  background: var(--cream);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  color: var(--text);
+  font-size: 15px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  outline: none;
+  transition: border-color 0.18s;
+}
+.form-input:focus { border-color: var(--accent); background: var(--white); }
+.form-input::placeholder { color: var(--text3); font-weight: 400; letter-spacing: 0; }
+.form-group { margin-bottom: 1.25rem; }
+
+.submit-btn {
+  width: 100%;
+  padding: 13px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  transition: all 0.18s;
+  box-shadow: 0 4px 16px rgba(232,160,32,0.3);
+  margin-top: 0.5rem;
+}
+.submit-btn:hover { background: var(--accent2); }
+.submit-btn:disabled { background: var(--cream2); color: var(--text3); box-shadow: none; cursor: not-allowed; }
+
+/* RESULT */
+.result-box {
+  border-radius: var(--radius-sm);
+  padding: 1.25rem;
+  margin-top: 1.25rem;
+  display: none;
+}
+.result-success {
+  background: var(--green-light);
+  border: 1px solid var(--green-border);
+}
+.result-error {
+  background: var(--red-light);
+  border: 1px solid var(--red-border);
+}
+.result-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+.result-success .result-title { color: var(--green); }
+.result-error .result-title { color: var(--red); }
+.card-code-wrap {
+  background: var(--white);
+  border: 1px solid var(--green-border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.card-code {
+  font-family: monospace;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.08em;
+  word-break: break-all;
+}
+.copy-btn {
+  flex-shrink: 0;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  transition: background 0.15s;
+}
+.copy-btn:hover { background: var(--accent2); }
+.result-note { font-size: 12px; color: var(--green); margin-top: 10px; }
+.result-error p { font-size: 13px; color: var(--red); }
+
+/* ADMIN */
+.admin-login { display: block; }
+.admin-panel { display: none; }
+
+.section-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 1.5rem 0;
+  color: var(--text3); font-size: 12px;
+}
+.section-divider::before, .section-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+.stock-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.stock-table th {
+  text-align: left; padding: 8px 0;
+  font-size: 11px; font-weight: 600;
+  color: var(--text3); letter-spacing: 0.06em; text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+.stock-table td {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text2);
+  vertical-align: middle;
+}
+.stock-table tr:last-child td { border-bottom: none; }
+.stock-num { font-size: 16px; font-weight: 600; color: var(--text); }
+.stock-low { color: var(--red); }
+
+.product-select {
+  width: 100%;
+  background: var(--cream);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 11px 14px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+  transition: border-color 0.18s;
+}
+.product-select:focus { border-color: var(--accent); }
+
+.cards-textarea {
+  width: 100%;
+  background: var(--cream);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: monospace;
+  letter-spacing: 0.05em;
+  outline: none;
+  resize: vertical;
+  min-height: 120px;
+  transition: border-color 0.18s;
+  line-height: 1.8;
+}
+.cards-textarea:focus { border-color: var(--accent); }
+.cards-textarea::placeholder { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: 0; color: var(--text3); }
+
+.add-result {
+  font-size: 13px;
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  display: none;
+}
+.add-result.ok { background: var(--green-light); color: var(--green); border: 1px solid var(--green-border); }
+.add-result.err { background: var(--red-light); color: var(--red); border: 1px solid var(--red-border); }
+
+.logout-btn {
+  font-size: 12px; color: var(--text3);
+  background: none; border: none; cursor: pointer;
+  padding: 4px 0; text-decoration: underline;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.logout-btn:hover { color: var(--red); }
+
+.order-badge {
+  display: inline-block; font-size: 10px; font-weight: 600;
+  padding: 2px 8px; border-radius: 5px;
+  background: var(--green-light); color: var(--green);
+  border: 1px solid var(--green-border);
+}
+
+@keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+.fade-up { animation: fadeUp 0.4s ease both; }
+
+@media(max-width:600px){
+  header{padding:0 1rem;}
+  .page-tabs{padding:0 1rem;}
+  main{padding:1.5rem 1rem 4rem;}
+  .card{padding:1.25rem;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logo-wrap" href="index.html">
+    <div class="logo-icon">🍍</div>
+    <div class="logo-text">菠萝小铺</div>
+  </a>
+  <a class="back-btn" href="index.html">← 返回商城</a>
+</header>
+
+<div class="page-tabs">
+  <div class="page-tab active" onclick="switchTab('redeem')">🎁 卡密兑换</div>
+  <div class="page-tab" id="admin-tab" onclick="switchTab('admin')" style="display:none;">🔧 后台管理</div>
+</div>
+
+<!-- 兑换页 -->
+<div id="tab-redeem">
+  <main>
+    <div class="card fade-up">
+      <div class="card-title">🎁 卡密兑换</div>
+      <p class="card-sub">请输入客服发给你的兑换码，兑换后卡密将立即显示</p>
+
+      <div class="form-group">
+        <label class="form-label">兑换码</label>
+        <input class="form-input" id="redeem-code" type="text" placeholder="请输入兑换码，例如：PINE-XXXX-XXXX" maxlength="32" />
+      </div>
+
+      <button class="submit-btn" id="redeem-btn" onclick="doRedeem()">立即兑换 →</button>
+
+      <div class="result-box result-success" id="redeem-success">
+        <div class="result-title">✅ 兑换成功！</div>
+        <div class="card-code-wrap">
+          <div class="card-code" id="card-code-display"></div>
+          <button class="copy-btn" id="copy-btn" onclick="copyCode()">复制</button>
+        </div>
+        <div class="result-note">请妥善保存卡密，截图备份。如有问题请联系客服。</div>
+      </div>
+
+      <div class="result-box result-error" id="redeem-error">
+        <div class="result-title">❌ 兑换失败</div>
+        <p id="redeem-error-msg">兑换码无效或已使用，请检查后重试。</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- 后台管理页 -->
+<div id="tab-admin" style="display:none;">
+  <main>
+
+    <!-- 登录框 -->
+    <div class="card fade-up admin-login" id="admin-login">
+      <div class="card-title">🔧 后台管理</div>
+      <p class="card-sub">请输入管理密码进入后台</p>
+      <div class="form-group">
+        <label class="form-label">管理密码</label>
+        <input class="form-input" id="admin-pwd" type="password" placeholder="请输入密码" onkeydown="if(event.key==='Enter')adminLogin()" />
+      </div>
+      <button class="submit-btn" onclick="adminLogin()">进入后台 →</button>
+      <div class="add-result err" id="login-err" style="display:none;">密码错误，请重试</div>
+    </div>
+
+    <!-- 管理面板 -->
+    <div class="admin-panel" id="admin-panel">
+
+      <!-- 库存概览 -->
+      <div class="card fade-up" style="margin-bottom:1.25rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <div class="card-title" style="margin-bottom:0;">📦 库存概览</div>
+          <button class="logout-btn" onclick="adminLogout()">退出登录</button>
+        </div>
+        <table class="stock-table" id="stock-overview"></table>
+      </div>
+
+      <!-- 添加卡密 -->
+      <div class="card fade-up" style="margin-bottom:1.25rem;">
+        <div class="card-title">➕ 添加卡密</div>
+        <p class="card-sub">选择商品，粘贴卡密（每行一个），系统自动生成兑换码</p>
+        <div class="form-group">
+          <label class="form-label">选择商品</label>
+          <select class="product-select" id="admin-product-select"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">卡密内容（每行一个）</label>
+          <textarea class="cards-textarea" id="admin-cards-input" placeholder="粘贴卡密，每行一个&#10;例如：XXXX-XXXX-XXXX-XXXX"></textarea>
+        </div>
+        <button class="submit-btn" onclick="addCards()">生成兑换码并入库</button>
+        <div class="add-result" id="add-result"></div>
+      </div>
+
+      <!-- 兑换码列表 -->
+      <div class="card fade-up">
+        <div class="card-title">🗒️ 兑换码列表</div>
+        <p class="card-sub">管理所有兑换码，可查看使用状态</p>
+        <div id="redeem-list"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+// ============================================================
+// 配置 — 修改管理密码
+// ============================================================
+const ADMIN_PASSWORD = 'a816917a'; // 改成你自己的密码！
+
+// 商品列表（和主页保持一致）
+const PRODUCTS = [
+  { id: 1, name: '苹果礼品卡 50 TL' },
+  { id: 2, name: '苹果礼品卡 100 TL' },
+  { id: 3, name: '苹果礼品卡 250 TL' },
+];
+
+// ============================================================
+// 工具函数
+// ============================================================
+function genRedeemCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = 'PINE';
+  for (let i = 0; i < 3; i++) {
+    code += '-';
+    for (let j = 0; j < 4; j++) code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+function loadData() {
+  try { return JSON.parse(localStorage.getItem('pineapple_stock') || '[]'); } catch { return []; }
+}
+
+function saveData(data) {
+  localStorage.setItem('pineapple_stock', JSON.stringify(data));
+}
+
+// ============================================================
+// 兑换逻辑
+// ============================================================
+function doRedeem() {
+  const code = document.getElementById('redeem-code').value.trim();
+  const btn = document.getElementById('redeem-btn');
+  document.getElementById('redeem-success').style.display = 'none';
+  document.getElementById('redeem-error').style.display = 'none';
+
+  // 暗码：输入 a816917a 显示后台管理入口
+  if (code === 'a816917a') {
+    document.getElementById('admin-tab').style.display = '';
+    document.getElementById('redeem-code').value = '';
+    switchTab('admin');
+    return;
+  }
+
+  const upperCode = code.toUpperCase();
+  if (!upperCode) { showRedeemError('请输入兑换码'); return; }
+
+  btn.disabled = true;
+  btn.textContent = '兑换中...';
+
+  setTimeout(() => {
+    const data = loadData();
+    const idx = data.findIndex(item => item.code === upperCode);
+
+    if (idx === -1) {
+      showRedeemError('兑换码无效，请检查是否输入正确');
+    } else if (data[idx].used) {
+      showRedeemError('该兑换码已被使用，每个兑换码只能使用一次');
+    } else {
+      // 标记为已使用
+      data[idx].used = true;
+      data[idx].usedAt = new Date().toLocaleString();
+      saveData(data);
+      // 显示卡密
+      document.getElementById('card-code-display').textContent = data[idx].cardCode;
+      document.getElementById('redeem-success').style.display = 'block';
+    }
+
+    btn.disabled = false;
+    btn.textContent = '立即兑换 →';
+  }, 600);
+}
+
+function showRedeemError(msg) {
+  document.getElementById('redeem-error-msg').textContent = msg;
+  document.getElementById('redeem-error').style.display = 'block';
+}
+
+function copyCode() {
+  const code = document.getElementById('card-code-display').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '已复制 ✓';
+    setTimeout(() => btn.textContent = '复制', 1800);
+  });
+}
+
+// ============================================================
+// 后台管理
+// ============================================================
+let adminLoggedIn = false;
+
+function adminLogin() {
+  const pwd = document.getElementById('admin-pwd').value;
+  if (pwd === ADMIN_PASSWORD) {
+    adminLoggedIn = true;
+    document.getElementById('admin-login').style.display = 'none';
+    document.getElementById('admin-panel').style.display = 'block';
+    document.getElementById('login-err').style.display = 'none';
+    renderAdminPanel();
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+    document.getElementById('admin-pwd').value = '';
+  }
+}
+
+function adminLogout() {
+  adminLoggedIn = false;
+  document.getElementById('admin-login').style.display = 'block';
+  document.getElementById('admin-panel').style.display = 'none';
+  document.getElementById('admin-pwd').value = '';
+}
+
+function renderAdminPanel() {
+  renderStockOverview();
+  renderRedeemList();
+  renderProductSelect();
+}
+
+function renderProductSelect() {
+  const sel = document.getElementById('admin-product-select');
+  sel.innerHTML = PRODUCTS.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+}
+
+function renderStockOverview() {
+  const data = loadData();
+  const table = document.getElementById('stock-overview');
+  const stats = {};
+  PRODUCTS.forEach(p => { stats[p.id] = { name: p.name, total: 0, used: 0, avail: 0 }; });
+  data.forEach(item => {
+    if (stats[item.productId]) {
+      stats[item.productId].total++;
+      if (item.used) stats[item.productId].used++;
+      else stats[item.productId].avail++;
+    }
+  });
+
+  table.innerHTML = `
+    <tr>
+      <th style="width:45%;">商品</th>
+      <th>可用</th>
+      <th>已用</th>
+      <th>总计</th>
+    </tr>
+    ${PRODUCTS.map(p => {
+      const s = stats[p.id];
+      const low = s.avail <= 2;
+      return `<tr>
+        <td>${p.name}</td>
+        <td><span class="stock-num ${low ? 'stock-low' : ''}">${s.avail}</span>${low && s.avail > 0 ? ' ⚠️' : ''}</td>
+        <td style="color:var(--text3);">${s.used}</td>
+        <td style="color:var(--text3);">${s.total}</td>
+      </tr>`;
+    }).join('')}
+  `;
+}
+
+function addCards() {
+  const pid = parseInt(document.getElementById('admin-product-select').value);
+  const raw = document.getElementById('admin-cards-input').value.trim();
+  const lines = raw.split('\n').map(s => s.trim()).filter(Boolean);
+  const resultEl = document.getElementById('add-result');
+
+  if (!lines.length) {
+    resultEl.className = 'add-result err';
+    resultEl.textContent = '请输入至少一个卡密';
+    resultEl.style.display = 'block';
+    return;
+  }
+
+  const data = loadData();
+  const newItems = lines.map(cardCode => ({
+    code: genRedeemCode(),
+    productId: pid,
+    cardCode,
+    used: false,
+    usedAt: null,
+    addedAt: new Date().toLocaleString()
+  }));
+
+  data.push(...newItems);
+  saveData(data);
+
+  document.getElementById('admin-cards-input').value = '';
+
+  // 显示生成的兑换码
+  const codeList = newItems.map(i => i.code).join('\n');
+  resultEl.className = 'add-result ok';
+  resultEl.style.whiteSpace = 'pre-line';
+  resultEl.innerHTML = `✅ 成功添加 ${newItems.length} 张卡密！\n\n生成的兑换码：\n${codeList}`;
+  resultEl.style.display = 'block';
+
+  renderStockOverview();
+  renderRedeemList();
+}
+
+function renderRedeemList() {
+  const data = loadData();
+  const el = document.getElementById('redeem-list');
+
+  if (!data.length) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--text3);text-align:center;padding:1.5rem 0;">暂无记录，请先添加卡密</p>';
+    return;
+  }
+
+  // 按添加时间倒序
+  const sorted = [...data].reverse();
+
+  el.innerHTML = `
+    <table class="stock-table" style="margin-top:0.5rem;">
+      <tr>
+        <th>兑换码</th>
+        <th>商品</th>
+        <th>状态</th>
+        <th>操作</th>
+      </tr>
+      ${sorted.map((item, idx) => {
+        const product = PRODUCTS.find(p => p.id === item.productId);
+        const realIdx = data.length - 1 - idx;
+        return `<tr>
+          <td style="font-family:monospace;font-size:12px;color:var(--text);">${item.code}</td>
+          <td style="font-size:12px;">${product ? product.name : '未知'}</td>
+          <td>${item.used
+            ? `<span style="font-size:11px;color:var(--text3);">已用</span>`
+            : `<span class="order-badge">可用</span>`
+          }</td>
+          <td>
+            <button onclick="deleteItem(${realIdx})" style="font-size:11px;color:var(--red);background:none;border:none;cursor:pointer;padding:2px;">删除</button>
+          </td>
+        </tr>`;
+      }).join('')}
+    </table>
+  `;
+}
+
+function deleteItem(idx) {
+  if (!confirm('确认删除这条记录？')) return;
+  const data = loadData();
+  data.splice(idx, 1);
+  saveData(data);
+  renderAdminPanel();
+}
+
+// ============================================================
+// 页面切换
+// ============================================================
+function switchTab(tab) {
+  document.querySelectorAll('.page-tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && tab === 'redeem') || (i === 1 && tab === 'admin'));
+  });
+  document.getElementById('tab-redeem').style.display = tab === 'redeem' ? '' : 'none';
+  document.getElementById('tab-admin').style.display = tab === 'admin' ? '' : 'none';
+}
+
+// 检查URL是否直接跳转到兑换页
+if (window.location.hash === '#redeem') {
+  switchTab('redeem');
+}
+</script>
+</body>
+</html>
