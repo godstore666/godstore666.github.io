@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>菠萝小铺 — 数字商品代购代充</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream: #faf7f2;
+  --cream2: #f4efe6;
+  --cream3: #ede6d9;
+  --white: #ffffff;
+  --border: #e8e0d0;
+  --border2: #d4c9b5;
+  --text: #2c2416;
+  --text2: #6b5e4a;
+  --text3: #a8977e;
+  --accent: #e8a020;
+  --accent2: #f0b535;
+  --accent-light: #fef3dc;
+  --accent-border: #f5d48a;
+  --green: #2d7a45;
+  --green-light: #ebf5ef;
+  --blue: #2563a8;
+  --blue-light: #eff4fc;
+  --red: #c94040;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 2px 16px rgba(44,36,22,0.07);
+  --shadow-lg: 0 8px 40px rgba(44,36,22,0.12);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--cream);
+  color: var(--text);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(250,247,242,0.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2.5rem; height: 64px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.logo-wrap { display: flex; align-items: center; gap: 10px; }
+.logo-icon {
+  width: 36px; height: 36px; background: var(--accent);
+  border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  font-size: 20px; box-shadow: 0 2px 8px rgba(232,160,32,0.3);
+}
+.logo-text { font-family: 'Noto Serif SC', serif; font-size: 18px; font-weight: 600; color: var(--text); }
+.logo-sub { font-size: 11px; color: var(--text3); letter-spacing: 0.08em; margin-top: -2px; }
+.status-pill {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--green-light); border: 1px solid #b8dfc4;
+  border-radius: 100px; padding: 5px 14px;
+  font-size: 12px; color: var(--green); font-weight: 500;
+}
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: blink 2s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.announcement {
+  background: var(--accent-light); border-bottom: 1px solid var(--accent-border);
+  padding: 11px 2.5rem; font-size: 13px; color: #7a5010;
+  display: flex; align-items: center; gap: 10px;
+}
+
+.notice-overlay {
+  position: fixed; inset: 0; z-index: 999;
+  background: rgba(44,36,22,0.55);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+  opacity: 0; pointer-events: none; transition: opacity 0.3s;
+}
+.notice-overlay.open { opacity: 1; pointer-events: all; }
+.notice-box {
+  background: var(--white); border-radius: 22px;
+  border: 1px solid var(--border); box-shadow: var(--shadow-lg);
+  width: 100%; max-width: 480px; padding: 2rem;
+  transform: scale(0.95); transition: transform 0.25s;
+}
+.notice-overlay.open .notice-box { transform: scale(1); }
+.notice-top {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 1.25rem;
+}
+.notice-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: var(--accent-light); border: 1px solid var(--accent-border);
+  display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;
+}
+.notice-title { font-family: 'Noto Serif SC', serif; font-size: 18px; font-weight: 600; color: var(--text); }
+.notice-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.notice-body {
+  background: var(--cream); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 1rem 1.25rem;
+  font-size: 14px; color: var(--text2); line-height: 1.75;
+  margin-bottom: 1.5rem; white-space: pre-line;
+}
+.notice-btn {
+  width: 100%; padding: 13px; border-radius: var(--radius-sm);
+  border: none; font-size: 14px; font-weight: 600; cursor: pointer;
+  font-family: 'Plus Jakarta Sans', sans-serif; transition: all 0.18s;
+}
+.notice-btn.waiting {
+  background: var(--cream2); color: var(--text3);
+  border: 1px solid var(--border2); cursor: not-allowed;
+}
+.notice-btn.ready {
+  background: var(--accent); color: #fff;
+  box-shadow: 0 4px 16px rgba(232,160,32,0.3);
+}
+.notice-btn.ready:hover { background: var(--accent2); }
+
+.trust-bar {
+  background: var(--white); border-bottom: 1px solid var(--border);
+  padding: 1rem 2.5rem; display: flex; justify-content: center;
+  gap: 3rem; flex-wrap: wrap;
+}
+.trust-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text2); }
+.trust-icon { font-size: 17px; }
+
+.hero {
+  padding: 3rem 2.5rem 2rem; max-width: 1100px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between; gap: 2rem;
+}
+.hero-left { flex: 1; }
+.hero-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent-light); border: 1px solid var(--accent-border);
+  color: #7a5010; font-size: 12px; font-weight: 500;
+  padding: 5px 14px; border-radius: 100px; margin-bottom: 1.25rem;
+}
+.hero h1 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: clamp(24px, 4vw, 40px); font-weight: 600;
+  color: var(--text); line-height: 1.3; margin-bottom: 1rem;
+}
+.hero h1 em { color: var(--accent); font-style: normal; }
+.hero-desc { font-size: 14px; color: var(--text2); max-width: 420px; margin-bottom: 2rem; }
+.hero-stats { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.stat-card {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 18px; box-shadow: var(--shadow);
+}
+.stat-num { font-size: 20px; font-weight: 600; color: var(--text); }
+.stat-label { font-size: 11px; color: var(--text3); margin-top: 1px; }
+.hero-right {
+  flex-shrink: 0; width: 160px; height: 160px;
+  background: var(--accent-light); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 80px; border: 3px solid var(--accent-border);
+}
+
+main { max-width: 1100px; margin: 0 auto; padding: 0 2.5rem 5rem; }
+
+.category-tabs {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 2rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border);
+}
+.tab-btn {
+  padding: 8px 20px; border-radius: 100px; border: 1px solid var(--border2);
+  background: var(--white); color: var(--text2); font-size: 13px; font-weight: 500;
+  cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif;
+  transition: all 0.18s; display: flex; align-items: center; gap: 7px;
+  box-shadow: var(--shadow);
+}
+.tab-btn:hover { border-color: var(--accent); color: var(--accent); }
+.tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); box-shadow: 0 4px 16px rgba(232,160,32,0.3); }
+.tab-count { font-size: 11px; background: rgba(0,0,0,0.08); padding: 1px 7px; border-radius: 100px; }
+.tab-btn.active .tab-count { background: rgba(255,255,255,0.25); }
+
+.section { margin-bottom: 3rem; }
+.section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem; }
+.section-title { font-family: 'Noto Serif SC', serif; font-size: 19px; font-weight: 600; color: var(--text); white-space: nowrap; }
+.section-line { flex: 1; height: 1px; background: var(--border); }
+.section-sub { font-size: 12px; color: var(--text3); white-space: nowrap; }
+
+.product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; }
+.product-card {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; cursor: pointer;
+  transition: all 0.2s; box-shadow: var(--shadow); position: relative;
+}
+.product-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--accent-border); }
+.product-img-wrap {
+  width: 100%; aspect-ratio: 16/9; background: var(--cream2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 48px; border-bottom: 1px solid var(--border);
+  position: relative; overflow: hidden;
+}
+.product-img-wrap img { width:100%; height:100%; object-fit:cover; position:absolute; inset:0; }
+.hot-badge {
+  position: absolute; top: 10px; right: 10px;
+  background: var(--red); color: #fff;
+  font-size: 10px; font-weight: 600; padding: 3px 9px;
+  border-radius: 6px; letter-spacing: 0.04em;
+}
+.product-body { padding: 14px 16px 16px; }
+.cat-badge {
+  display: inline-block; font-size: 10px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 5px; margin-bottom: 8px;
+}
+.cb-gold { background: var(--accent-light); color: #7a5010; border: 1px solid var(--accent-border); }
+.cb-blue { background: var(--blue-light); color: var(--blue); border: 1px solid #c3d7f0; }
+.cb-green { background: var(--green-light); color: var(--green); border: 1px solid #b8dfc4; }
+.product-name { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 5px; line-height: 1.4; }
+.product-desc { font-size: 12px; color: var(--text2); margin-bottom: 12px; line-height: 1.55; }
+.product-footer { display: flex; align-items: center; justify-content: space-between; }
+.product-price { font-size: 19px; font-weight: 600; color: var(--text); }
+.product-price small { font-size: 12px; color: var(--text3); font-weight: 400; }
+.buy-btn {
+  background: var(--accent); color: #fff; border: none;
+  padding: 8px 16px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  transition: all 0.18s; box-shadow: 0 2px 8px rgba(232,160,32,0.25);
+}
+.buy-btn:hover { background: var(--accent2); }
+
+.overlay {
+  position: fixed; inset: 0; background: rgba(44,36,22,0.4);
+  backdrop-filter: blur(5px); z-index: 200;
+  display: flex; align-items: center; justify-content: center; padding: 1rem;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: 22px; width: 100%; max-width: 460px; padding: 2rem;
+  box-shadow: var(--shadow-lg);
+  transform: translateY(20px) scale(0.98); transition: transform 0.22s;
+}
+.overlay.open .modal { transform: translateY(0) scale(1); }
+.modal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+.modal-close {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--cream2);
+  color: var(--text2); font-size: 15px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-left: 12px;
+}
+.modal-close:hover { background: var(--cream3); }
+.modal h2 { font-family: 'Noto Serif SC', serif; font-size: 19px; font-weight: 600; color: var(--text); line-height: 1.35; }
+.modal-desc { font-size: 13px; color: var(--text2); line-height: 1.6; margin-bottom: 1.25rem; }
+.price-band {
+  background: var(--cream); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 12px 16px; display: flex; align-items: baseline; gap: 8px; margin-bottom: 1.25rem;
+}
+.price-big { font-size: 28px; font-weight: 700; color: var(--accent); }
+.price-note { font-size: 12px; color: var(--text3); }
+.form-label { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 7px; display: block; }
+.qty-row { display: flex; align-items: center; gap: 12px; margin-bottom: 1.25rem; }
+.qty-btn {
+  width: 36px; height: 36px; border: 1px solid var(--border2); border-radius: var(--radius-sm);
+  background: var(--cream); color: var(--text); font-size: 20px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+}
+.qty-btn:hover { border-color: var(--accent); color: var(--accent); }
+.qty-val { font-size: 18px; font-weight: 600; min-width: 28px; text-align: center; }
+.form-input {
+  width: 100%; background: var(--cream); border: 1px solid var(--border2);
+  border-radius: var(--radius-sm); padding: 11px 14px; color: var(--text);
+  font-size: 14px; font-family: 'Plus Jakarta Sans', sans-serif;
+  outline: none; transition: border-color 0.18s; margin-bottom: 1.25rem;
+}
+.form-input:focus { border-color: var(--accent); background: var(--white); }
+.form-input::placeholder { color: var(--text3); }
+.total-row {
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--accent-light); border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 1rem;
+}
+.total-label { font-size: 13px; color: #7a5010; font-weight: 500; }
+.total-price { font-size: 22px; font-weight: 700; color: var(--accent); }
+.pay-btn {
+  width: 100%; padding: 13px; background: var(--accent); color: #fff; border: none;
+  border-radius: var(--radius-sm); font-size: 15px; font-weight: 600; cursor: pointer;
+  font-family: 'Plus Jakarta Sans', sans-serif; transition: all 0.18s;
+  box-shadow: 0 4px 16px rgba(232,160,32,0.3);
+}
+.pay-btn:hover { background: var(--accent2); }
+.modal-foot { font-size: 11px; color: var(--text3); text-align: center; margin-top: 10px; }
+
+.success-wrap { text-align: center; }
+.success-icon-wrap {
+  width: 68px; height: 68px; background: var(--green-light); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 34px; margin: 0 auto 1.25rem; border: 2px solid #b8dfc4;
+}
+.success-wrap h2 { font-family: 'Noto Serif SC', serif; font-size: 21px; color: var(--green); margin-bottom: 6px; }
+.success-wrap p { font-size: 13px; color: var(--text2); margin-bottom: 1.5rem; }
+.delivery-card {
+  background: var(--cream); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 1.25rem; text-align: left; margin-bottom: 1rem;
+}
+.delivery-card h3 { font-size: 11px; font-weight: 600; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 12px; }
+.dl-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 0; border-bottom: 1px solid var(--border);
+  font-size: 13px; color: var(--text);
+}
+.dl-item:last-child { border-bottom: none; padding-bottom: 0; }
+.dl-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.order-meta {
+  background: var(--cream2); border-radius: var(--radius-sm); padding: 12px 14px;
+  font-size: 12px; color: var(--text2); text-align: left;
+  line-height: 1.8; margin-bottom: 1rem; border: 1px solid var(--border);
+}
+.close-btn {
+  width: 100%; padding: 12px; background: var(--cream2); color: var(--text2);
+  border: 1px solid var(--border2); border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 500; cursor: pointer;
+  font-family: 'Plus Jakarta Sans', sans-serif; transition: background 0.15s;
+}
+.close-btn:hover { background: var(--cream3); }
+
+footer {
+  border-top: 1px solid var(--border); padding: 2rem 2.5rem;
+  text-align: center; color: var(--text3); font-size: 12px;
+  background: var(--white); line-height: 2;
+}
+
+@keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+.fade-up { animation: fadeUp 0.5s ease both; }
+
+@media(max-width:700px){
+  header{padding:0 1rem;}
+  .announcement,.trust-bar{padding:10px 1rem;}
+  .trust-bar{gap:1.2rem;}
+  .hero{padding:2rem 1rem 1.5rem;flex-direction:column;}
+  .hero-right{width:110px;height:110px;font-size:56px;}
+  main{padding:0 1rem 3rem;}
+}
+</style>
+</head>
+<body>
+
+<!-- 公告弹窗 -->
+<div class="notice-overlay open" id="notice-overlay">
+  <div class="notice-box">
+    <div class="notice-top">
+      <div class="notice-icon">📢</div>
+      <div>
+        <div class="notice-title">菠萝小铺公告</div>
+        <div class="notice-sub">请阅读后继续浏览</div>
+      </div>
+    </div>
+    <div class="notice-body" id="notice-body"></div>
+    <button class="notice-btn waiting" id="notice-btn" onclick="closeNotice()">请阅读公告（<span id="notice-countdown">3</span>s）</button>
+  </div>
+</div>
+
+<header>
+  <div class="logo-wrap">
+    <div class="logo-icon">🍍</div>
+    <div>
+      <div class="logo-text">菠萝小铺</div>
+      <div class="logo-sub">数字商品代购 · 代充</div>
+    </div>
+  </div>
+  <div class="status-pill"><div class="status-dot"></div>营业中</div>
+</header>
+
+<div class="announcement">📢 &nbsp;<span id="announcement-text"></span></div>
+
+<div class="trust-bar">
+  <div class="trust-item"><span class="trust-icon">✅</span>正品保障</div>
+  <div class="trust-item"><span class="trust-icon">⚡</span>快速响应</div>
+  <div class="trust-item"><span class="trust-icon">🔒</span>安全交易</div>
+  <div class="trust-item"><span class="trust-icon">💬</span>售后无忧</div>
+</div>
+
+<div class="hero fade-up">
+  <div class="hero-left">
+    <div class="hero-tag">🍍 菠萝小铺 · 值得信赖</div>
+    <h1>专业数字商品<br><em>代购 · 代充</em> 服务</h1>
+    <p class="hero-desc">苹果礼品卡及 ChatGPT、Claude、Gemini 等 AI 订阅代充，安全便捷，问题包处理。</p>
+    <div class="hero-stats">
+      <div class="stat-card"><div class="stat-num">1000+</div><div class="stat-label">累计订单</div></div>
+      <div class="stat-card"><div class="stat-num">99%</div><div class="stat-label">好评率</div></div>
+      <div class="stat-card"><div class="stat-num">24h</div><div class="stat-label">在线响应</div></div>
+    </div>
+  </div>
+  <div class="hero-right">🍍</div>
+</div>
+
+<main>
+  <div class="category-tabs">
+    <button class="tab-btn active" onclick="filterCat(this,'all')">全部 <span class="tab-count" id="cnt-all">0</span></button>
+    <button class="tab-btn" onclick="filterCat(this,'giftcard')">🍎 苹果礼品卡 <span class="tab-count" id="cnt-giftcard">0</span></button>
+    <button class="tab-btn" onclick="filterCat(this,'ai')">🤖 AI 订阅 <span class="tab-count" id="cnt-ai">0</span></button>
+  </div>
+
+  <div class="section" id="sec-giftcard">
+    <div class="section-header">
+      <div class="section-title">🍎 苹果礼品卡</div>
+      <div class="section-line"></div>
+      <div class="section-sub">土耳其区 · 正品</div>
+    </div>
+    <div class="product-grid" id="grid-giftcard"></div>
+  </div>
+
+  <div class="section" id="sec-ai">
+    <div class="section-header">
+      <div class="section-title">🤖 AI 订阅代充</div>
+      <div class="section-line"></div>
+      <div class="section-sub">ChatGPT · Claude · Gemini</div>
+    </div>
+    <div class="product-grid" id="grid-ai"></div>
+  </div>
+</main>
+
+<!-- 购买弹窗 -->
+<div class="overlay" id="modal" onclick="closeModalOut(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div id="m-badge" style="margin-bottom:8px;"></div>
+        <h2 id="m-title"></h2>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <p class="modal-desc" id="m-desc"></p>
+    <div class="price-band">
+      <div class="price-big" id="m-price"></div>
+      <div class="price-note" id="m-price-note"></div>
+    </div>
+    <label class="form-label">购买数量</label>
+    <div class="qty-row">
+      <button class="qty-btn" onclick="changeQty(-1)">−</button>
+      <div class="qty-val" id="m-qty">1</div>
+      <button class="qty-btn" onclick="changeQty(1)">+</button>
+    </div>
+    <label class="form-label">联系方式（QQ / 微信 / 邮箱）</label>
+    <input class="form-input" id="m-contact" type="text" placeholder="填写后客服会主动联系你发货" />
+    <div class="total-row">
+      <div class="total-label">合计金额</div>
+      <div class="total-price" id="m-total">¥0.00</div>
+    </div>
+    <button class="pay-btn" onclick="doPay()">立即付款 →</button>
+    <div class="modal-foot">付款完成后将显示发货方式 · 如有问题请联系客服</div>
+  </div>
+</div>
+
+<!-- 成功弹窗 -->
+<div class="overlay" id="success-modal" onclick="closeSuccessOut(event)">
+  <div class="modal">
+    <div class="success-wrap">
+      <div class="success-icon-wrap">✅</div>
+      <h2>订单已提交！</h2>
+      <p>感谢你的购买，请通过以下方式联系我们完成发货</p>
+      <div class="delivery-card">
+        <h3>发货说明</h3>
+        <div class="dl-item"><span class="dl-icon">💬</span><span>加 QQ 群：2158072705<strong id="s-qq"></strong>，备注你的联系方式</span></div>
+        <div class="dl-item"><span class="dl-icon">⏱️</span><span>工作时间内 <strong id="s-time"></strong> 响应，客服会主动联系</span></div>
+        <div class="dl-item"><span class="dl-icon">📝</span><span id="s-note"></span></div>
+      </div>
+      <div class="order-meta" id="s-summary"></div>
+      <button class="close-btn" onclick="closeSuccess()">好的，我知道了</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div style="font-size:20px;margin-bottom:6px;">🍍</div>
+  <div>© 2025 菠萝小铺 · 数字商品代购代充</div>
+  <div style="margin-top:4px;">所有商品均为正规渠道 · 如有问题请联系客服</div>
+</footer>
+
+<script>
+// ============================================================
+// 🍍 商品配置 — 在这里修改你的商品
+// ============================================================
+const PRODUCTS = [
+  {
+    id: 1, cat: 'giftcard',
+    name: '苹果礼品卡 50 TL',
+    desc: '土耳其区 App Store 礼品卡，面值 50 里拉。可用于购买应用、游戏内购、订阅等。付款后人工发送卡码。',
+    price: 13.50, unit: '张',
+    badge: '礼品卡', badgeClass: 'cb-gold',
+    emoji: '🍎', hot: false, priceNote: '/ 张，含服务费'
+  },
+  {
+    id: 2, cat: 'giftcard',
+    name: '苹果礼品卡 500 TL',
+    desc: '土耳其区 App Store 礼品卡，面值 500 里拉，性价比最高，推荐购买。付款后人工发送卡码。',
+    price: 85.00, unit: '张',
+    badge: '热销', badgeClass: 'cb-green',
+    emoji: '🍎', hot: true, priceNote: '/ 张，含服务费'
+  },
+  {
+    id: 3, cat: 'giftcard',
+    name: '苹果礼品卡 1000 TL',
+    desc: '土耳其区 App Store 礼品卡，面值 1000 里拉，大额更优惠。付款后人工发送卡码。',
+    price: 165.00, unit: '张',
+    badge: '礼品卡', badgeClass: 'cb-gold',
+    emoji: '🍎', hot: false, priceNote: '/ 张，含服务费'
+  },
+  {
+    id: 4, cat: 'ai',
+    name: 'ChatGPT Plus 代充',
+    desc: '充值你的 ChatGPT 账号，升级 Plus 享受 GPT-4o 等高级功能。需提供账号，安全操作，隐私保障。',
+    price: 125.00, unit: '月',
+    badge: 'AI订阅', badgeClass: 'cb-blue',
+    emoji: '🤖', hot: true, priceNote: '/ 月，官方原价约 $20'
+  },
+  {
+    id: 5, cat: 'ai',
+    name: 'Claude Pro 代充',
+    desc: '充值你的 Claude 账号，升级 Pro 享受更高使用额度与优先访问权限。需提供账号，安全操作。',
+    price: 138.00, unit: '月',
+    badge: 'AI订阅', badgeClass: 'cb-blue',
+    emoji: '🧠', hot: false, priceNote: '/ 月，官方原价约 $20'
+  },
+  {
+    id: 6, cat: 'ai',
+    name: 'Gemini Advanced 代充',
+    desc: '充值你的 Google 账号，升级 Gemini Advanced 享受最强 Gemini 模型体验。需提供账号。',
+    price: 138.00, unit: '月',
+    badge: 'AI订阅', badgeClass: 'cb-blue',
+    emoji: '💎', hot: false, priceNote: '/ 月，官方原价约 $20'
+  },
+];
+
+// ============================================================
+// 🍍 店铺配置 — 改成你自己的信息
+// ============================================================
+const CONFIG = {
+  announcement: '欢迎光临菠萝小铺！本店主营苹果礼品卡及 ChatGPT、Claude、Gemini 等 AI 订阅代充，有任何问题欢迎联系客服。',
+  qq_group: '2158072705',       // 改成你的QQ群号
+  response_time: '10 分钟内',
+  note: '工作时间 9:00–23:00，节假日可能稍有延迟，感谢理解'
+};
+
+// ============================================================
+// 逻辑部分（不需要修改）
+// ============================================================
+let cur = null, qty = 1;
+
+function startNotice() {
+  document.getElementById('notice-body').textContent = CONFIG.announcement;
+  let sec = 3;
+  const btn = document.getElementById('notice-btn');
+  const cd = document.getElementById('notice-countdown');
+  const timer = setInterval(() => {
+    sec--;
+    if (sec <= 0) {
+      clearInterval(timer);
+      btn.innerHTML = '✅ 我已阅读，进入商城';
+      btn.className = 'notice-btn ready';
+    } else {
+      cd.textContent = sec;
+    }
+  }, 1000);
+}
+
+function closeNotice() {
+  const btn = document.getElementById('notice-btn');
+  if (!btn.classList.contains('ready')) return;
+  document.getElementById('notice-overlay').classList.remove('open');
+}
+
+function init() {
+  startNotice();
+  document.getElementById('announcement-text').textContent = CONFIG.announcement;
+  document.getElementById('s-qq').textContent = CONFIG.qq_group;
+  document.getElementById('s-time').textContent = CONFIG.response_time;
+  document.getElementById('s-note').textContent = CONFIG.note;
+  const cats = {giftcard:0, ai:0};
+  PRODUCTS.forEach(p => cats[p.cat]++);
+  document.getElementById('cnt-all').textContent = PRODUCTS.length;
+  document.getElementById('cnt-giftcard').textContent = cats.giftcard;
+  document.getElementById('cnt-ai').textContent = cats.ai;
+  renderGrid('giftcard');
+  renderGrid('ai');
+}
+
+function renderGrid(cat) {
+  const items = PRODUCTS.filter(p => p.cat === cat);
+  document.getElementById('grid-' + cat).innerHTML = items.map((p, i) => `
+    <div class="product-card" style="animation:fadeUp 0.4s ${i*0.07}s both" onclick="openModal(${p.id})">
+      ${p.hot ? '<div class="hot-badge">热销</div>' : ''}
+      <div class="product-img-wrap">${p.emoji}</div>
+      <div class="product-body">
+        <span class="cat-badge ${p.badgeClass}">${p.badge}</span>
+        <div class="product-name">${p.name}</div>
+        <div class="product-desc">${p.desc}</div>
+        <div class="product-footer">
+          <div class="product-price">¥${p.price.toFixed(2)} <small>/ ${p.unit}</small></div>
+          <button class="buy-btn" onclick="event.stopPropagation();openModal(${p.id})">购买</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterCat(btn, cat) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  ['giftcard','ai'].forEach(c => {
+    document.getElementById('sec-' + c).style.display = (cat==='all'||cat===c) ? '' : 'none';
+  });
+}
+
+function openModal(id) {
+  cur = PRODUCTS.find(p => p.id === id);
+  qty = 1;
+  document.getElementById('m-badge').innerHTML = `<span class="cat-badge ${cur.badgeClass}">${cur.badge}</span>`;
+  document.getElementById('m-title').textContent = cur.name;
+  document.getElementById('m-desc').textContent = cur.desc;
+  document.getElementById('m-price').textContent = '¥' + cur.price.toFixed(2);
+  document.getElementById('m-price-note').textContent = cur.priceNote;
+  document.getElementById('m-qty').textContent = 1;
+  document.getElementById('m-contact').value = '';
+  updateTotal();
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+function closeModalOut(e) { if (e.target.id==='modal') closeModal(); }
+function changeQty(d) { qty=Math.max(1,Math.min(99,qty+d)); document.getElementById('m-qty').textContent=qty; updateTotal(); }
+function updateTotal() { document.getElementById('m-total').textContent='¥'+(cur.price*qty).toFixed(2); }
+
+function doPay() {
+  const contact = document.getElementById('m-contact').value.trim();
+  if (!contact) { alert('请填写联系方式，方便客服联系你发货 😊'); return; }
+  // 🔧 将来在这里替换为易支付跳转链接
+  closeModal();
+  document.getElementById('s-summary').innerHTML =
+    `商品：${cur.name}<br>数量：${qty} ${cur.unit}<br>金额：¥${(cur.price*qty).toFixed(2)}<br>联系方式：${contact}`;
+  document.getElementById('success-modal').classList.add('open');
+}
+
+function closeSuccess() { document.getElementById('success-modal').classList.remove('open'); }
+function closeSuccessOut(e) { if (e.target.id==='success-modal') closeSuccess(); }
+
+init();
+</script>
+</body>
+</html>
