@@ -384,6 +384,13 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
     <!-- 管理面板 -->
     <div class="admin-panel" id="admin-panel">
 
+      <!-- 后台子导航 -->
+      <div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap;">
+        <button class="admin-sub-btn active" id="sub-stock" onclick="adminSubTab('stock')">📦 库存管理</button>
+        <button class="admin-sub-btn" id="sub-products" onclick="adminSubTab('products')">🛍️ 商品管理</button>
+        <button class="admin-sub-btn" id="sub-codes" onclick="adminSubTab('codes')">🗒️ 兑换码</button>
+      </div>
+
       <div id="panel-stock">
       <!-- 库存概览 -->
       <div class="card fade-up" style="margin-bottom:1.25rem;">
@@ -412,7 +419,7 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
       </div><!-- /panel-stock -->
 
       <!-- 兑换码列表 -->
-      <div class="card fade-up" id="panel-codes">
+      <div class="card fade-up" id="panel-codes" style="display:none;">
         <div class="card-title">🗒️ 兑换码列表</div>
         <p class="card-sub">管理所有兑换码，可查看使用状态</p>
         <div id="redeem-list"></div>
@@ -631,6 +638,7 @@ function renderAdminPanel() {
   renderStockOverview();
   renderRedeemList();
   renderProductSelect();
+  renderProductManageList();
 }
 
 function renderProductSelect() {
@@ -886,13 +894,6 @@ function deleteProduct(idx) {
   saveCustomProducts(products);
   renderProductManageList();
   showNpResult('ok', `已删除商品「${name}」`);
-}
-
-// 覆盖 renderAdminPanel，加上商品列表渲染
-const _origRenderAdminPanel = renderAdminPanel;
-function renderAdminPanel() {
-  _origRenderAdminPanel();
-  renderProductManageList();
 }
 
 // 检查URL是否直接跳转到兑换页
