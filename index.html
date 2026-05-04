@@ -601,6 +601,14 @@ function closeNotice() {
   document.getElementById('notice-overlay').classList.remove('open');
 }
 
+function loadCustomProducts() {
+  try { return JSON.parse(localStorage.getItem('pineapple_products') || '[]'); } catch { return []; }
+}
+
+function getAllProducts() {
+  return [...PRODUCTS, ...loadCustomProducts()];
+}
+
 function init() {
   startNotice();
   document.getElementById('announcement-text').textContent = CONFIG.announcement;
@@ -608,9 +616,10 @@ function init() {
   document.getElementById('s-qq2').textContent = CONFIG.qq_group;
   document.getElementById('s-time').textContent = CONFIG.response_time;
   document.getElementById('s-note').textContent = CONFIG.note;
+  const all = getAllProducts();
   const cats = {giftcard:0, ai:0};
-  PRODUCTS.forEach(p => cats[p.cat]++);
-  document.getElementById('cnt-all').textContent = PRODUCTS.length;
+  all.forEach(p => { if(cats[p.cat]!==undefined) cats[p.cat]++; });
+  document.getElementById('cnt-all').textContent = all.length;
   document.getElementById('cnt-giftcard').textContent = cats.giftcard;
   document.getElementById('cnt-ai').textContent = cats.ai;
   renderGrid('giftcard');
@@ -618,7 +627,7 @@ function init() {
 }
 
 function renderGrid(cat) {
-  const items = PRODUCTS.filter(p => p.cat === cat);
+  const items = getAllProducts().filter(p => p.cat === cat);
   document.getElementById('grid-' + cat).innerHTML = items.map((p, i) => `
     <div class="product-card" style="animation:fadeUp 0.4s ${i*0.07}s both" onclick="openModal(${p.id})">
       ${p.hot ? '<div class="hot-badge">热销</div>' : ''}
@@ -639,13 +648,13 @@ function renderGrid(cat) {
 function filterCat(btn, cat) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  ['giftcard','ai'].forEach(c => {
+  const _all = getAllProducts(); ['giftcard','ai'].forEach(c => {
     document.getElementById('sec-' + c).style.display = (cat==='all'||cat===c) ? '' : 'none';
   });
 }
 
 function openModal(id) {
-  cur = PRODUCTS.find(p => p.id === id);
+  cur = getAllProducts().find(p => p.id === id);
   qty = 1;
   document.getElementById('m-badge').innerHTML = `<span class="cat-badge ${cur.badgeClass}">${cur.badge}</span>`;
   document.getElementById('m-title').textContent = cur.name;
