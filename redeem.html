@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>菠萝小铺 — 卡密兑换 v7.1</title>
+<title>菠萝小铺 — 卡密兑换 v8</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -345,6 +345,94 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
 }
 .category-row:last-child { border-bottom: none; }
 
+.stock-click {
+  display: inline-flex;
+  min-width: 54px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 5px 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.stock-click:hover {
+  background: var(--accent-light);
+  border-color: var(--accent-border);
+  color: #7a5010;
+}
+.manager-toolbar {
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+  background:var(--cream);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  padding:10px 12px;
+  margin:12px 0;
+  font-size:12px;
+  color:var(--text2);
+}
+.manager-filters {
+  display:grid;
+  grid-template-columns: 1.1fr 1fr 130px;
+  gap:10px;
+  margin: 12px 0;
+}
+.product-group {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--cream);
+  margin: 12px 0;
+  overflow: hidden;
+}
+.product-group-head {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding: 10px 12px;
+  border-bottom:1px solid var(--border);
+  background: var(--cream2);
+}
+.product-group-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+.code-row {
+  display:grid;
+  grid-template-columns: 24px 1.2fr 1.2fr 80px 1fr 80px;
+  gap: 8px;
+  align-items:center;
+  padding: 9px 12px;
+  border-bottom:1px solid var(--border);
+  font-size: 12px;
+}
+.code-row:last-child { border-bottom: none; }
+.code-cell-mono {
+  font-family: monospace;
+  color: var(--text);
+  word-break: break-all;
+}
+.stock-manager-title-line {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+@media(max-width:700px){
+  .manager-filters{grid-template-columns:1fr;}
+  .code-row{grid-template-columns:24px 1fr; gap: 6px 8px;}
+  .code-row > div:nth-child(n+3){grid-column:2;}
+  .product-group-head{align-items:flex-start; flex-direction:column;}
+}
+
+
 
 .product-admin-grid {
   display: grid;
@@ -500,6 +588,32 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
           <button class="logout-btn" onclick="adminLogout()">退出登录</button>
         </div>
         <table class="stock-table" id="stock-overview"></table>
+        <p style="font-size:11px;color:var(--text3);margin-top:10px;">提示：点击「可用 / 已用 / 总计」数字，可跳到该商品库存明细管理。</p>
+      </div>
+
+      <!-- 库存明细管理 -->
+      <div class="card fade-up" id="stock-manager-card" style="display:none;margin-bottom:1.25rem;">
+        <div class="stock-manager-title-line">
+          <div>
+            <div class="card-title" id="stock-manager-title" style="margin-bottom:4px;">🧰 库存明细管理</div>
+            <p class="card-sub" id="stock-manager-sub" style="margin-bottom:0;">点击库存数字后，这里会显示对应商品的卡密明细。</p>
+          </div>
+          <button class="mini-btn" type="button" data-stock-action="refresh">刷新</button>
+        </div>
+        <div class="manager-toolbar" id="stock-manager-toolbar">
+          <button class="mini-btn green" type="button" data-stock-filter="available">只看可用</button>
+          <button class="mini-btn" type="button" data-stock-filter="used">只看已用</button>
+          <button class="mini-btn blue" type="button" data-stock-filter="all">全部</button>
+          <span id="stock-manager-current" style="margin-left:auto;color:var(--text3);">未选择商品</span>
+        </div>
+        <div class="manager-toolbar" id="stock-batch-toolbar" style="display:none;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="stock-select-all" data-stock-action="toggle-all"> 全选当前列表</label>
+          <span id="stock-selected-count">已选 0 个</span>
+          <button class="mini-btn blue" type="button" data-stock-action="copy-selected">复制选中</button>
+          <button class="mini-btn red" type="button" data-stock-action="delete-selected">删除选中</button>
+          <button class="mini-btn" type="button" data-stock-action="clear-selected">清空选择</button>
+        </div>
+        <div id="stock-manager-list"></div>
       </div>
 
       <!-- 添加卡密 -->
@@ -521,8 +635,27 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
 
       <!-- 兑换码列表 -->
       <div class="card fade-up" id="panel-codes" style="display:none;">
-        <div class="card-title">🗒️ 兑换码列表</div>
-        <p class="card-sub">管理所有兑换码，可查看使用状态</p>
+        <div class="card-title">🗒️ 兑换码管理</div>
+        <p class="card-sub">按商品分组管理兑换码，可批量复制或删除。</p>
+        <div class="manager-filters">
+          <input class="form-input" id="code-search" type="text" placeholder="搜索兑换码 / 卡密 / 订单号" style="margin-bottom:0;font-size:13px;" oninput="renderRedeemList()" />
+          <select class="product-select" id="code-product-filter" style="font-size:13px;" onchange="renderRedeemList()">
+            <option value="all">全部商品</option>
+          </select>
+          <select class="product-select" id="code-status-filter" style="font-size:13px;" onchange="renderRedeemList()">
+            <option value="all">全部状态</option>
+            <option value="available">可用</option>
+            <option value="used">已用</option>
+          </select>
+        </div>
+        <div class="manager-toolbar" id="code-batch-toolbar" style="display:none;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="code-select-all" data-code-action="toggle-all"> 全选当前列表</label>
+          <span id="code-selected-count">已选 0 个</span>
+          <button class="mini-btn blue" type="button" data-code-action="copy-selected">复制选中</button>
+          <button class="mini-btn red" type="button" data-code-action="delete-selected">删除选中</button>
+          <button class="mini-btn" type="button" data-code-action="clear-selected">清空选择</button>
+          <button class="mini-btn" type="button" data-code-action="refresh">刷新</button>
+        </div>
         <div id="redeem-list"></div>
       </div>
 
@@ -1480,6 +1613,35 @@ function copySelectedOrderNos() {
 // ============================================================
 // 库存与卡密
 // ============================================================
+let STOCK_MANAGER_PRODUCT_ID = null;
+let STOCK_MANAGER_FILTER = 'available';
+let STOCK_MANAGER_ROWS = [];
+let SELECTED_STOCK_IDS = new Set();
+let CODE_MANAGER_ROWS = [];
+let SELECTED_CODE_IDS = new Set();
+
+function getProductById(id) {
+  return PRODUCTS.find(p => Number(p.id) === Number(id));
+}
+
+function cardStatusLabel(c) {
+  return c.used ? '<span style="font-size:11px;color:var(--text3);">已用</span>' : '<span class="order-badge">可用</span>';
+}
+
+function cardCopyLine(c) {
+  const product = getProductById(c.product_id);
+  const status = c.used ? '已用' : '可用';
+  return `${c.redeem_code}\t${c.card_code}\t${product ? product.name : '未知商品'}\t${status}\t${c.order_no || '-'}`;
+}
+
+function renderCodeProductFilter() {
+  const sel = document.getElementById('code-product-filter');
+  if (!sel) return;
+  const current = sel.value || 'all';
+  sel.innerHTML = '<option value="all">全部商品</option>' + PRODUCTS.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+  if ([...sel.options].some(o => o.value === current)) sel.value = current;
+}
+
 async function renderStockOverview() {
   const table = document.getElementById('stock-overview');
   table.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:1rem;color:var(--text3);font-size:13px;">加载中...</td></tr>';
@@ -1500,15 +1662,122 @@ async function renderStockOverview() {
         const s = stats[p.id] || {avail:0,used:0,total:0};
         const low = s.avail <= 2;
         return `<tr>
-          <td>${escapeHtml(p.name)}</td>
-          <td><span class="stock-num ${low?'stock-low':''}">${s.avail}</span>${low&&s.avail>0?' ⚠️':''}</td>
-          <td style="color:var(--text3);">${s.used}</td>
-          <td style="color:var(--text3);">${s.total}</td>
+          <td><button type="button" class="stock-click" data-stock-open="${p.id}" data-stock-open-filter="all" style="justify-content:flex-start;min-width:0;text-align:left;">${escapeHtml(p.name)}</button></td>
+          <td><button type="button" class="stock-click" data-stock-open="${p.id}" data-stock-open-filter="available"><span class="stock-num ${low?'stock-low':''}">${s.avail}</span>${low&&s.avail>0?' ⚠️':''}</button></td>
+          <td><button type="button" class="stock-click" data-stock-open="${p.id}" data-stock-open-filter="used" style="color:var(--text3);">${s.used}</button></td>
+          <td><button type="button" class="stock-click" data-stock-open="${p.id}" data-stock-open-filter="all" style="color:var(--text3);">${s.total}</button></td>
         </tr>`;
       }).join('')}
     `;
+    if (STOCK_MANAGER_PRODUCT_ID) await renderStockManager();
   } catch(e) {
     table.innerHTML = '<tr><td colspan="4" style="color:var(--red);font-size:13px;">加载失败，请检查登录状态</td></tr>';
+  }
+}
+
+async function openStockManager(productId, filter = 'available') {
+  STOCK_MANAGER_PRODUCT_ID = Number(productId);
+  STOCK_MANAGER_FILTER = filter || 'available';
+  SELECTED_STOCK_IDS.clear();
+  const addSelect = document.getElementById('admin-product-select');
+  if (addSelect) addSelect.value = String(productId);
+  const card = document.getElementById('stock-manager-card');
+  if (card) card.style.display = '';
+  await renderStockManager();
+  setTimeout(() => card && card.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+}
+
+function filteredStockRows(rows) {
+  if (STOCK_MANAGER_FILTER === 'available') return rows.filter(c => !c.used);
+  if (STOCK_MANAGER_FILTER === 'used') return rows.filter(c => c.used);
+  return rows;
+}
+
+async function renderStockManager() {
+  const title = document.getElementById('stock-manager-title');
+  const sub = document.getElementById('stock-manager-sub');
+  const list = document.getElementById('stock-manager-list');
+  const cur = document.getElementById('stock-manager-current');
+  const toolbar = document.getElementById('stock-batch-toolbar');
+  if (!list || !STOCK_MANAGER_PRODUCT_ID) return;
+  const product = getProductById(STOCK_MANAGER_PRODUCT_ID);
+  if (title) title.textContent = `🧰 库存明细管理 — ${product ? product.name : '未知商品'}`;
+  if (sub) sub.textContent = '可以批量选择、复制或删除该商品的卡密记录。删除可用卡密会直接从库存移除；删除已用卡密会删除历史记录，请谨慎。';
+  if (cur) cur.textContent = `当前：${product ? product.name : '未知商品'} / ${STOCK_MANAGER_FILTER === 'available' ? '可用' : STOCK_MANAGER_FILTER === 'used' ? '已用' : '全部'}`;
+  list.innerHTML = '<p style="font-size:13px;color:var(--text3);text-align:center;padding:1rem;">加载中...</p>';
+  try {
+    const rows = await sbFetch('cards', `product_id=eq.${STOCK_MANAGER_PRODUCT_ID}&order=created_at.desc`, adminToken);
+    STOCK_MANAGER_ROWS = filteredStockRows(rows || []);
+    SELECTED_STOCK_IDS = new Set([...SELECTED_STOCK_IDS].filter(id => STOCK_MANAGER_ROWS.some(c => Number(c.id) === Number(id))));
+    if (toolbar) toolbar.style.display = STOCK_MANAGER_ROWS.length ? 'flex' : 'none';
+    if (!STOCK_MANAGER_ROWS.length) {
+      list.innerHTML = '<p style="font-size:13px;color:var(--text3);text-align:center;padding:1.5rem 0;">当前筛选下没有卡密记录</p>';
+      updateStockSelectionCount();
+      return;
+    }
+    list.innerHTML = `
+      <div class="product-group">
+        <div class="product-group-head">
+          <div class="product-group-title">${escapeHtml(product ? product.name : '未知商品')} · ${STOCK_MANAGER_ROWS.length} 条</div>
+          <button type="button" class="mini-btn blue" data-stock-action="copy-visible">复制当前列表</button>
+        </div>
+        <div class="code-row" style="font-weight:700;color:var(--text3);background:var(--white);">
+          <div></div><div>兑换码</div><div>卡密</div><div>状态</div><div>订单</div><div>操作</div>
+        </div>
+        ${STOCK_MANAGER_ROWS.map(c => `
+          <div class="code-row">
+            <div><input type="checkbox" class="stock-card-check" data-id="${c.id}" ${SELECTED_STOCK_IDS.has(Number(c.id)) ? 'checked' : ''}></div>
+            <div class="code-cell-mono">${escapeHtml(c.redeem_code)}</div>
+            <div class="code-cell-mono">${escapeHtml(c.card_code)}</div>
+            <div>${cardStatusLabel(c)}</div>
+            <div class="code-cell-mono" style="color:var(--text3);">${escapeHtml(c.order_no || '-')}</div>
+            <div><button type="button" class="mini-btn red" data-stock-action="delete-one" data-id="${c.id}">删除</button></div>
+          </div>`).join('')}
+      </div>`;
+    updateStockSelectionCount();
+  } catch(e) {
+    console.error(e);
+    list.innerHTML = '<p style="font-size:13px;color:var(--red);text-align:center;padding:1rem;">库存明细加载失败</p>';
+  }
+}
+
+function updateStockSelectionCount() {
+  const selected = Array.from(document.querySelectorAll('.stock-card-check:checked')).map(cb => Number(cb.dataset.id));
+  SELECTED_STOCK_IDS = new Set(selected);
+  const el = document.getElementById('stock-selected-count');
+  if (el) el.textContent = `已选 ${selected.length} 个`;
+  const allBox = document.getElementById('stock-select-all');
+  if (allBox) allBox.checked = STOCK_MANAGER_ROWS.length > 0 && selected.length === STOCK_MANAGER_ROWS.length;
+}
+
+function toggleAllStockRows(checked) {
+  document.querySelectorAll('.stock-card-check').forEach(cb => cb.checked = checked);
+  updateStockSelectionCount();
+}
+
+function copyCardsToClipboard(rows, label = '卡密') {
+  if (!rows.length) return alert('没有可复制的内容');
+  const text = rows.map(cardCopyLine).join('\n');
+  navigator.clipboard.writeText(text).then(() => alert(`已复制 ${rows.length} 条${label}`)).catch(() => alert('复制失败，请手动复制'));
+}
+
+async function deleteCardRows(rows, from = 'stock') {
+  if (!rows.length) return alert('请先选择要删除的卡密');
+  const usedCount = rows.filter(c => c.used).length;
+  const msg = usedCount
+    ? `选中的 ${rows.length} 条中包含 ${usedCount} 条已用卡密。删除会清除历史记录，且无法恢复。确认继续？`
+    : `确认删除选中的 ${rows.length} 条可用卡密？删除后会从库存中移除。`;
+  if (!confirm(msg)) return;
+  try {
+    for (const c of rows) await sbDelete('cards', { id: c.id }, adminToken);
+    if (from === 'code') SELECTED_CODE_IDS.clear(); else SELECTED_STOCK_IDS.clear();
+    await renderStockOverview();
+    await renderStockManager();
+    await renderRedeemList();
+    alert('删除完成。');
+  } catch(e) {
+    console.error(e);
+    alert('删除失败，请检查管理员权限或刷新后重试');
   }
 }
 
@@ -1535,7 +1804,9 @@ async function addCards() {
     const codeList = newItems.map(i => i.redeem_code).join('\n');
     resultEl.style.whiteSpace = 'pre-line';
     resultEl.innerHTML = `✅ 成功添加 ${newItems.length} 张卡密！\n\n生成的兑换码：\n${codeList}`;
+    if (STOCK_MANAGER_PRODUCT_ID && Number(STOCK_MANAGER_PRODUCT_ID) === Number(pid)) SELECTED_STOCK_IDS.clear();
     await renderStockOverview();
+    await renderStockManager();
     await renderRedeemList();
   } catch(e) {
     console.error(e);
@@ -1543,40 +1814,159 @@ async function addCards() {
   }
 }
 
+function getCodeFilters() {
+  const q = (document.getElementById('code-search')?.value || '').trim().toLowerCase();
+  const pid = document.getElementById('code-product-filter')?.value || 'all';
+  const status = document.getElementById('code-status-filter')?.value || 'all';
+  return { q, pid, status };
+}
+
+function codeMatchesFilter(c, filters) {
+  if (filters.pid !== 'all' && Number(c.product_id) !== Number(filters.pid)) return false;
+  if (filters.status === 'available' && c.used) return false;
+  if (filters.status === 'used' && !c.used) return false;
+  if (!filters.q) return true;
+  const product = getProductById(c.product_id);
+  const text = [c.redeem_code, c.card_code, c.order_no, product?.name].map(x => String(x || '').toLowerCase()).join(' ');
+  return text.includes(filters.q);
+}
+
 async function renderRedeemList() {
   const el = document.getElementById('redeem-list');
+  if (!el) return;
+  renderCodeProductFilter();
   el.innerHTML = '<p style="font-size:13px;color:var(--text3);text-align:center;padding:1rem;">加载中...</p>';
   try {
     const data = await sbFetch('cards', 'order=created_at.desc', adminToken);
-    if (!data || !data.length) {
-      el.innerHTML = '<p style="font-size:13px;color:var(--text3);text-align:center;padding:1.5rem 0;">暂无记录，请先添加卡密</p>';
+    const filters = getCodeFilters();
+    CODE_MANAGER_ROWS = (data || []).filter(c => codeMatchesFilter(c, filters));
+    SELECTED_CODE_IDS = new Set([...SELECTED_CODE_IDS].filter(id => CODE_MANAGER_ROWS.some(c => Number(c.id) === Number(id))));
+    const toolbar = document.getElementById('code-batch-toolbar');
+    if (toolbar) toolbar.style.display = CODE_MANAGER_ROWS.length ? 'flex' : 'none';
+    if (!CODE_MANAGER_ROWS.length) {
+      el.innerHTML = '<p style="font-size:13px;color:var(--text3);text-align:center;padding:1.5rem 0;">当前筛选下暂无兑换码</p>';
+      updateCodeSelectionCount();
       return;
     }
-    el.innerHTML = `
-      <table class="stock-table" style="margin-top:0.5rem;">
-        <tr><th>兑换码</th><th>商品</th><th>状态</th><th>订单</th><th>操作</th></tr>
-        ${data.map(item => {
-          const product = PRODUCTS.find(p => p.id === item.product_id);
-          return `<tr>
-            <td style="font-family:monospace;font-size:12px;color:var(--text);">${escapeHtml(item.redeem_code)}</td>
-            <td style="font-size:12px;">${escapeHtml(product ? product.name : '未知')}</td>
-            <td>${item.used ? '<span style="font-size:11px;color:var(--text3);">已用</span>' : '<span class="order-badge">可用</span>'}</td>
-            <td style="font-family:monospace;font-size:11px;color:var(--text3);">${escapeHtml(item.order_no || '-')}</td>
-            <td><button onclick="deleteItem(${item.id})" style="font-size:11px;color:var(--red);background:none;border:none;cursor:pointer;">删除</button></td>
-          </tr>`;
-        }).join('')}
-      </table>
-    `;
+    const grouped = {};
+    CODE_MANAGER_ROWS.forEach(c => {
+      const key = String(c.product_id || 'unknown');
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(c);
+    });
+    const productOrder = Object.keys(grouped).sort((a,b) => {
+      const pa = getProductById(a)?.name || '未知商品';
+      const pb = getProductById(b)?.name || '未知商品';
+      return pa.localeCompare(pb, 'zh-CN');
+    });
+    el.innerHTML = productOrder.map(pid => {
+      const rows = grouped[pid];
+      const product = getProductById(pid);
+      const avail = rows.filter(c => !c.used).length;
+      const used = rows.filter(c => c.used).length;
+      return `<div class="product-group" data-code-product-group="${escapeHtml(pid)}">
+        <div class="product-group-head">
+          <div>
+            <div class="product-group-title">${escapeHtml(product ? product.name : '未知商品')} · ${rows.length} 条</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;">可用 ${avail} · 已用 ${used}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button type="button" class="mini-btn blue" data-code-action="copy-product" data-product-id="${escapeHtml(pid)}">复制本商品</button>
+            <button type="button" class="mini-btn" data-code-action="select-product" data-product-id="${escapeHtml(pid)}">选择本商品</button>
+          </div>
+        </div>
+        <div class="code-row" style="font-weight:700;color:var(--text3);background:var(--white);">
+          <div></div><div>兑换码</div><div>卡密</div><div>状态</div><div>订单</div><div>操作</div>
+        </div>
+        ${rows.map(c => `<div class="code-row">
+          <div><input type="checkbox" class="code-card-check" data-id="${c.id}" ${SELECTED_CODE_IDS.has(Number(c.id)) ? 'checked' : ''}></div>
+          <div class="code-cell-mono">${escapeHtml(c.redeem_code)}</div>
+          <div class="code-cell-mono">${escapeHtml(c.card_code)}</div>
+          <div>${cardStatusLabel(c)}</div>
+          <div class="code-cell-mono" style="color:var(--text3);">${escapeHtml(c.order_no || '-')}</div>
+          <div><button type="button" class="mini-btn red" data-code-action="delete-one" data-id="${c.id}">删除</button></div>
+        </div>`).join('')}
+      </div>`;
+    }).join('');
+    updateCodeSelectionCount();
   } catch(e) {
+    console.error(e);
     el.innerHTML = '<p style="font-size:13px;color:var(--red);text-align:center;padding:1rem;">加载失败</p>';
   }
 }
 
+function updateCodeSelectionCount() {
+  const selected = Array.from(document.querySelectorAll('.code-card-check:checked')).map(cb => Number(cb.dataset.id));
+  SELECTED_CODE_IDS = new Set(selected);
+  const el = document.getElementById('code-selected-count');
+  if (el) el.textContent = `已选 ${selected.length} 个`;
+  const allBox = document.getElementById('code-select-all');
+  if (allBox) allBox.checked = CODE_MANAGER_ROWS.length > 0 && selected.length === CODE_MANAGER_ROWS.length;
+}
+
+function toggleAllCodeRows(checked) {
+  document.querySelectorAll('.code-card-check').forEach(cb => cb.checked = checked);
+  updateCodeSelectionCount();
+}
+
+function bindStockAndCodeDelegation() {
+  if (window.__bpStockCodeBound) return;
+  window.__bpStockCodeBound = true;
+  document.addEventListener('click', async function(e) {
+    const stockOpen = e.target.closest('[data-stock-open]');
+    if (stockOpen) {
+      e.preventDefault();
+      await openStockManager(stockOpen.dataset.stockOpen, stockOpen.dataset.stockOpenFilter || 'available');
+      return;
+    }
+    const stockFilter = e.target.closest('[data-stock-filter]');
+    if (stockFilter) {
+      e.preventDefault();
+      STOCK_MANAGER_FILTER = stockFilter.dataset.stockFilter || 'available';
+      SELECTED_STOCK_IDS.clear();
+      await renderStockManager();
+      return;
+    }
+    const stockAction = e.target.closest('[data-stock-action]');
+    if (stockAction) {
+      e.preventDefault();
+      const action = stockAction.dataset.stockAction;
+      if (action === 'toggle-all') toggleAllStockRows(stockAction.checked);
+      else if (action === 'refresh') await renderStockManager();
+      else if (action === 'clear-selected') { SELECTED_STOCK_IDS.clear(); document.querySelectorAll('.stock-card-check').forEach(cb => cb.checked = false); updateStockSelectionCount(); }
+      else if (action === 'copy-selected') copyCardsToClipboard(STOCK_MANAGER_ROWS.filter(c => SELECTED_STOCK_IDS.has(Number(c.id))), '库存记录');
+      else if (action === 'copy-visible') copyCardsToClipboard(STOCK_MANAGER_ROWS, '当前库存列表');
+      else if (action === 'delete-one') { const row = STOCK_MANAGER_ROWS.find(c => Number(c.id) === Number(stockAction.dataset.id)); if (row) await deleteCardRows([row], 'stock'); }
+      else if (action === 'delete-selected') await deleteCardRows(STOCK_MANAGER_ROWS.filter(c => SELECTED_STOCK_IDS.has(Number(c.id))), 'stock');
+      return;
+    }
+    const codeAction = e.target.closest('[data-code-action]');
+    if (codeAction) {
+      e.preventDefault();
+      const action = codeAction.dataset.codeAction;
+      if (action === 'toggle-all') toggleAllCodeRows(codeAction.checked);
+      else if (action === 'refresh') await renderRedeemList();
+      else if (action === 'clear-selected') { SELECTED_CODE_IDS.clear(); document.querySelectorAll('.code-card-check').forEach(cb => cb.checked = false); updateCodeSelectionCount(); }
+      else if (action === 'copy-selected') copyCardsToClipboard(CODE_MANAGER_ROWS.filter(c => SELECTED_CODE_IDS.has(Number(c.id))), '兑换码');
+      else if (action === 'delete-selected') await deleteCardRows(CODE_MANAGER_ROWS.filter(c => SELECTED_CODE_IDS.has(Number(c.id))), 'code');
+      else if (action === 'copy-product') copyCardsToClipboard(CODE_MANAGER_ROWS.filter(c => String(c.product_id) === String(codeAction.dataset.productId)), '本商品兑换码');
+      else if (action === 'select-product') {
+        CODE_MANAGER_ROWS.filter(c => String(c.product_id) === String(codeAction.dataset.productId)).forEach(c => SELECTED_CODE_IDS.add(Number(c.id)));
+        document.querySelectorAll('.code-card-check').forEach(cb => cb.checked = SELECTED_CODE_IDS.has(Number(cb.dataset.id)));
+        updateCodeSelectionCount();
+      }
+      else if (action === 'delete-one') { const row = CODE_MANAGER_ROWS.find(c => Number(c.id) === Number(codeAction.dataset.id)); if (row) await deleteCardRows([row], 'code'); }
+    }
+  });
+  document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('stock-card-check')) updateStockSelectionCount();
+    if (e.target.classList.contains('code-card-check')) updateCodeSelectionCount();
+  });
+}
+
 async function deleteItem(id) {
-  if (!confirm('确认删除这条卡密记录？')) return;
-  await sbDelete('cards', {id}, adminToken);
-  await renderRedeemList();
-  await renderStockOverview();
+  const all = await sbFetch('cards', `id=eq.${id}`, adminToken).catch(()=>[]);
+  if (all && all[0]) await deleteCardRows([all[0]], 'code');
 }
 
 // ============================================================
@@ -1817,6 +2207,7 @@ async function deleteProduct(id, name) {
 // 初始化
 // ============================================================
 bindOrderActionDelegation();
+bindStockAndCodeDelegation();
 if (window.location.hash === '#admin') {
   showAdminEntry();
   switchTab('admin');
