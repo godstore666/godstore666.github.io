@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>菠萝小铺 — 卡密兑换 v5</title>
+<title>菠萝小铺 — 卡密兑换 v7.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -92,6 +92,7 @@ header {
 
 /* MAIN */
 main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+#tab-admin main { max-width: 1100px; }
 
 /* CARDS */
 .card {
@@ -344,8 +345,39 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
 }
 .category-row:last-child { border-bottom: none; }
 
+
+.product-admin-grid {
+  display: grid;
+  grid-template-columns: minmax(330px, 0.92fr) minmax(430px, 1.08fr);
+  gap: 18px;
+  align-items: start;
+}
+.product-admin-left, .product-admin-right {
+  min-width: 0;
+}
+.product-admin-grid .card { margin-bottom: 1.25rem; }
+.settings-textarea {
+  width: 100%;
+  min-height: 140px;
+  background: var(--cream);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  outline: none;
+  resize: vertical;
+  line-height: 1.75;
+}
+.settings-textarea:focus { border-color: var(--accent); background: var(--white); }
+
 @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
 .fade-up { animation: fadeUp 0.4s ease both; }
+
+@media(max-width:900px){
+  .product-admin-grid{grid-template-columns:1fr;}
+}
 
 @media(max-width:600px){
   header{padding:0 1rem;}
@@ -430,6 +462,7 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
         <button class="admin-sub-btn" id="sub-stock" onclick="adminSubTab('stock')">📦 库存管理</button>
         <button class="admin-sub-btn" id="sub-products" onclick="adminSubTab('products')">🛍️ 商品管理</button>
         <button class="admin-sub-btn" id="sub-codes" onclick="adminSubTab('codes')">🗒️ 兑换码</button>
+        <button class="admin-sub-btn" id="sub-settings" onclick="adminSubTab('settings')">⚙️ 公告设置</button>
       </div>
 
       <div class="card fade-up" id="panel-orders" style="margin-bottom:1.25rem;">
@@ -451,9 +484,9 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
         <div class="order-toolbar" id="orders-toolbar" style="display:none;">
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="order-select-all" onchange="toggleAllOrders(this.checked)"> 全选</label>
           <span id="selected-orders-count">已选 0 个</span>
-          <button class="mini-btn red" onclick="batchDeleteOrders()">批量删除记录</button>
-          <button class="mini-btn blue" onclick="copySelectedOrderNos()">复制订单号</button>
-          <button class="mini-btn" onclick="renderOrdersList()">刷新</button>
+          <button type="button" class="mini-btn red" data-order-batch="delete">批量删除记录</button>
+          <button type="button" class="mini-btn blue" data-order-batch="copy-nos">复制订单号</button>
+          <button type="button" class="mini-btn" data-order-batch="refresh">刷新</button>
           <span style="font-size:11px;color:var(--text3);line-height:26px;">批量删除只处理「待确认/已取消」订单，已付款/已发货不会被删除</span>
         </div>
         <div id="orders-list"></div>
@@ -495,6 +528,8 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
 
       <!-- 商品管理面板 -->
       <div id="panel-products" style="display:none;">
+        <div class="product-admin-grid">
+          <div class="product-admin-left">
 
         <!-- 分类管理 -->
         <div class="card fade-up" style="margin-bottom:1.25rem;">
@@ -529,6 +564,8 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
           <div class="section-divider">已有分类</div>
           <div id="category-manage-list"></div>
         </div>
+          </div>
+          <div class="product-admin-right">
 
         <!-- 添加商品 -->
         <div class="card fade-up" style="margin-bottom:1.25rem;">
@@ -614,6 +651,23 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
           <p class="card-sub">管理商城中显示的商品，可删除或调整顺序</p>
           <div id="product-manage-list"></div>
         </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 公告设置面板 -->
+      <div class="card fade-up" id="panel-settings" style="display:none;margin-bottom:1.25rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;gap:12px;">
+          <div class="card-title" style="margin-bottom:0;">⚙️ 公告设置</div>
+          <button class="logout-btn" onclick="adminLogout()">退出登录</button>
+        </div>
+        <p class="card-sub">这里修改后会同步到商城首页顶部公告和进入网站的弹窗公告。保存后刷新首页即可看到最新内容。</p>
+        <div class="form-group">
+          <label class="form-label">首页公告内容</label>
+          <textarea class="settings-textarea" id="setting-announcement" placeholder="请输入公告内容，可换行"></textarea>
+        </div>
+        <button class="submit-btn" onclick="saveShopSettings()">保存公告 →</button>
+        <div class="add-result" id="settings-result"></div>
       </div>
 
     </div>
@@ -639,6 +693,8 @@ const DEFAULT_CATEGORIES = [
 let CATEGORIES = [...DEFAULT_CATEGORIES];
 let adminToken = localStorage.getItem('bp_admin_token') || '';
 let adminLoggedIn = false;
+const DEFAULT_ANNOUNCEMENT = '欢迎光临菠萝小铺！本店主营苹果礼品卡及 ChatGPT、Claude、Gemini 等 AI 订阅代充。有任何问题欢迎联系客服。付款时请务必备注订单号，提卡加 QQ 群 2158072705。';
+let SHOP_SETTINGS = { announcement: DEFAULT_ANNOUNCEMENT };
 
 // ============================================================
 // 通用工具
@@ -677,6 +733,19 @@ async function sbInsert(table, body, token = adminToken) {
     headers: {
       ...headers(token, true),
       'Prefer': 'return=representation'
+    },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+async function sbUpsert(table, body, conflict = 'key', token = adminToken) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=${encodeURIComponent(conflict)}`, {
+    method: 'POST',
+    headers: {
+      ...headers(token, true),
+      'Prefer': 'resolution=merge-duplicates,return=representation'
     },
     body: JSON.stringify(body)
   });
@@ -890,6 +959,8 @@ function adminLogout() {
 async function renderAdminPanel() {
   if (!adminToken) return;
   try {
+    await loadShopSettings();
+    renderShopSettingsForm();
     await loadCategories();
     await loadProducts();
     renderProductSelect();
@@ -905,6 +976,48 @@ async function renderAdminPanel() {
       alert('登录已过期，请重新登录');
       adminLogout();
     }
+  }
+}
+
+
+// ============================================================
+// 店铺公告设置
+// ============================================================
+async function loadShopSettings() {
+  try {
+    const rows = await sbFetch('shop_settings', 'key=in.(announcement)', adminToken);
+    (rows || []).forEach(r => {
+      if (r.key === 'announcement') SHOP_SETTINGS.announcement = r.value || DEFAULT_ANNOUNCEMENT;
+    });
+  } catch(e) {
+    console.warn('shop_settings 表未配置，使用默认公告', e);
+    SHOP_SETTINGS.announcement = DEFAULT_ANNOUNCEMENT;
+  }
+}
+
+function renderShopSettingsForm() {
+  const el = document.getElementById('setting-announcement');
+  if (el) el.value = SHOP_SETTINGS.announcement || DEFAULT_ANNOUNCEMENT;
+}
+
+function showSettingsResult(type, msg) {
+  const el = document.getElementById('settings-result');
+  if (!el) return;
+  el.className = 'add-result ' + type;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function saveShopSettings() {
+  const announcement = (document.getElementById('setting-announcement')?.value || '').trim();
+  if (!announcement) return showSettingsResult('err', '公告内容不能为空');
+  try {
+    await sbUpsert('shop_settings', [{ key: 'announcement', value: announcement, updated_at: new Date().toISOString() }], 'key', adminToken);
+    SHOP_SETTINGS.announcement = announcement;
+    showSettingsResult('ok', '✅ 公告已保存。刷新首页后会显示最新公告。');
+  } catch(e) {
+    console.error(e);
+    showSettingsResult('err', '保存失败：请先执行 V7 的 shop_settings SQL，或检查管理员权限。');
   }
 }
 
@@ -993,39 +1106,46 @@ async function renderOrdersList() {
       updateOrderSelectionCount();
       return;
     }
+
+    function actionBtn(label, cls, action, o) {
+      return `<button type="button" class="mini-btn ${cls} order-action"
+        data-action="${escapeHtml(action)}"
+        data-id="${escapeHtml(o.id)}"
+        data-order-no="${escapeHtml(o.order_no || '')}"
+        data-product-id="${escapeHtml(o.product_id || '')}"
+        data-quantity="${escapeHtml(o.quantity || 1)}"
+        data-status="${escapeHtml(o.status || '')}">${escapeHtml(label)}</button>`;
+    }
+
     el.innerHTML = orders.map(o => {
       const actions = [];
-      const orderNoArg = JSON.stringify(o.order_no || '');
       if (o.status === 'pending') {
-        actions.push(`<button class="mini-btn green" onclick="confirmPaidOrder(${o.id}, ${orderNoArg}, ${o.product_id || 'null'}, ${o.quantity || 1})">确认付款</button>`);
-        actions.push(`<button class="mini-btn red" onclick="cancelOrder(${o.id}, ${orderNoArg})">标记取消</button>`);
-        actions.push(`<button class="mini-btn red" onclick="deleteOrder(${o.id}, ${orderNoArg}, '${escapeHtml(o.status || '')}')">删除记录</button>`);
-      }
-      if (o.status === 'paid') {
-        actions.push(`<button class="mini-btn gold" onclick="assignCodesToOrder(${o.id}, ${orderNoArg}, ${o.product_id || 'null'}, ${o.quantity || 1})">分配/补发兑换码</button>`);
-        actions.push(`<button class="mini-btn blue" onclick="copyOrderCodes(${orderNoArg})">复制兑换码</button>`);
-        actions.push(`<button class="mini-btn green" onclick="markDelivered(${o.id}, ${orderNoArg})">标记发货</button>`);
-        actions.push(`<button class="mini-btn red" onclick="revokePaidOrder(${o.id}, ${orderNoArg})">撤销付款</button>`);
-      }
-      if (o.status === 'delivered') {
-        actions.push(`<button class="mini-btn blue" onclick="copyOrderCodes(${orderNoArg})">复制兑换码</button>`);
-        actions.push(`<button class="mini-btn gold" onclick="rollbackDelivery(${o.id}, ${orderNoArg})">撤回发货</button>`);
+        actions.push(actionBtn('确认付款', 'green', 'confirm-paid', o));
+        actions.push(actionBtn('标记取消', 'red', 'cancel', o));
+        actions.push(actionBtn('删除记录', 'red', 'delete', o));
+      } else if (o.status === 'paid') {
+        actions.push(actionBtn('分配/补发兑换码', 'gold', 'assign-codes', o));
+        actions.push(actionBtn('复制兑换码', 'blue', 'copy-codes', o));
+        actions.push(actionBtn('标记发货', 'green', 'mark-delivered', o));
+        actions.push(actionBtn('撤销付款', 'red', 'revoke-paid', o));
+      } else if (o.status === 'delivered') {
+        actions.push(actionBtn('复制兑换码', 'blue', 'copy-codes', o));
+        actions.push(actionBtn('撤回发货', 'gold', 'rollback-delivery', o));
         actions.push(`<span style="font-size:11px;color:var(--text3);padding:4px 0;">已发货不能删除</span>`);
-      }
-      if (o.status === 'cancelled') {
-        actions.push(`<button class="mini-btn red" onclick="deleteOrder(${o.id}, ${orderNoArg}, '${escapeHtml(o.status || '')}')">删除记录</button>`);
+      } else if (o.status === 'cancelled') {
+        actions.push(actionBtn('删除记录', 'red', 'delete', o));
       }
       return `
-        <div style="border-bottom:1px solid var(--border);padding:12px 0;" data-order-row="${o.id}">
+        <div style="border-bottom:1px solid var(--border);padding:12px 0;" data-order-row="${escapeHtml(o.id)}">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:6px;">
             <label style="display:flex;align-items:center;gap:8px;min-width:0;">
-              <input type="checkbox" class="order-check" onchange="updateOrderSelectionCount()" data-id="${o.id}" data-order-no="${escapeHtml(o.order_no || '')}" data-status="${escapeHtml(o.status || '')}">
+              <input type="checkbox" class="order-check" onchange="updateOrderSelectionCount()" data-id="${escapeHtml(o.id)}" data-order-no="${escapeHtml(o.order_no || '')}" data-status="${escapeHtml(o.status || '')}">
               <span style="font-family:monospace;font-weight:700;font-size:13px;color:var(--text);word-break:break-all;">${escapeHtml(o.order_no)}</span>
             </label>
             ${statusBadge(o.status)}
           </div>
           <div style="font-size:13px;color:var(--text2);line-height:1.7;padding-left:26px;">
-            商品：${escapeHtml(o.product_name || '未知商品')} × ${o.quantity || 1}<br>
+            商品：${escapeHtml(o.product_name || '未知商品')} × ${escapeHtml(o.quantity || 1)}<br>
             金额：<strong style="color:var(--accent);">¥${Number(o.price || 0).toFixed(2)}</strong>　联系方式：${escapeHtml(o.contact || '-')}<br>
             创建：${fmtTime(o.created_at)} ${o.paid_at ? '　付款：' + fmtTime(o.paid_at) : ''} ${o.delivered_at ? '　发货：' + fmtTime(o.delivered_at) : ''}
           </div>
@@ -1035,9 +1155,64 @@ async function renderOrdersList() {
     }).join('');
     updateOrderSelectionCount();
   } catch(e) {
-    console.error(e);
+    console.error('renderOrdersList error:', e);
     el.innerHTML = '<p style="font-size:13px;color:var(--red);text-align:center;padding:1rem;">订单加载失败，请检查 RLS 和登录状态</p>';
   }
+}
+
+async function handleOrderAction(btn) {
+  if (!btn || btn.disabled) return;
+  const action = btn.dataset.action;
+  const id = Number(btn.dataset.id || 0);
+  const orderNo = btn.dataset.orderNo || '';
+  const productId = btn.dataset.productId ? Number(btn.dataset.productId) : null;
+  const quantity = btn.dataset.quantity ? Number(btn.dataset.quantity) : 1;
+  const status = btn.dataset.status || '';
+  const oldText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '处理中...';
+  try {
+    if (action === 'confirm-paid') await confirmPaidOrder(id, orderNo, productId, quantity);
+    else if (action === 'cancel') await cancelOrder(id, orderNo);
+    else if (action === 'delete') await deleteOrder(id, orderNo, status);
+    else if (action === 'assign-codes') await assignCodesToOrder(id, orderNo, productId, quantity);
+    else if (action === 'copy-codes') await copyOrderCodes(orderNo);
+    else if (action === 'mark-delivered') await markDelivered(id, orderNo);
+    else if (action === 'revoke-paid') await revokePaidOrder(id, orderNo);
+    else if (action === 'rollback-delivery') await rollbackDelivery(id, orderNo);
+    else alert('未知操作：' + action);
+  } catch (e) {
+    console.error('订单按钮执行失败:', action, e);
+    alert('按钮执行失败：' + (e.message || e));
+  } finally {
+    if (document.body.contains(btn)) {
+      btn.disabled = false;
+      btn.textContent = oldText;
+    }
+  }
+}
+
+function bindOrderActionDelegation() {
+  if (window.__bpOrderActionBound) return;
+  window.__bpOrderActionBound = true;
+  document.addEventListener('click', function(e) {
+    const actionBtn = e.target.closest('.order-action');
+    if (actionBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleOrderAction(actionBtn);
+      return;
+    }
+    const batchBtn = e.target.closest('[data-order-batch]');
+    if (batchBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const action = batchBtn.dataset.orderBatch;
+      if (action === 'delete') batchDeleteOrders();
+      else if (action === 'copy-nos') copySelectedOrderNos();
+      else if (action === 'refresh') renderOrdersList();
+    }
+  });
 }
 
 function getSelectedOrders() {
@@ -1349,7 +1524,7 @@ function switchTab(tab) {
 }
 
 function adminSubTab(tab) {
-  ['orders','stock','products','codes'].forEach(t => {
+  ['orders','stock','products','codes','settings'].forEach(t => {
     const btn = document.getElementById('sub-' + t);
     const panel = document.getElementById('panel-' + t);
     if (btn) btn.classList.toggle('active', t === tab);
@@ -1573,6 +1748,7 @@ async function deleteProduct(id, name) {
 // ============================================================
 // 初始化
 // ============================================================
+bindOrderActionDelegation();
 if (window.location.hash === '#admin') {
   showAdminEntry();
   switchTab('admin');

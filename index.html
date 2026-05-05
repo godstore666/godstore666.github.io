@@ -600,6 +600,18 @@ function escapeHtml(str = '') {
   return String(str).replace(/[&<>'"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[s]));
 }
 
+
+async function loadShopSettingsFromSupabase() {
+  try {
+    const rows = await sbFetch('shop_settings', 'key=in.(announcement)');
+    (rows || []).forEach(r => {
+      if (r.key === 'announcement' && r.value) CONFIG.announcement = r.value;
+    });
+  } catch(e) {
+    console.warn('shop_settings 表未配置，使用默认公告', e);
+  }
+}
+
 function startNotice() {
   if (sessionStorage.getItem('notice_shown')) {
     document.getElementById('notice-overlay').classList.remove('open');
@@ -714,6 +726,7 @@ function renderCategoryUI(activeCat = 'all') {
 }
 
 async function init() {
+  await loadShopSettingsFromSupabase();
   startNotice();
   document.getElementById('announcement-text').textContent = CONFIG.announcement;
   document.getElementById('s-qq').textContent = CONFIG.qq_group;
