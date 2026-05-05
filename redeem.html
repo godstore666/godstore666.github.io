@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>菠萝小铺 — 卡密兑换 v4</title>
+<title>菠萝小铺 — 卡密兑换 v5</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -307,6 +307,42 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
   background: var(--green-light); color: var(--green);
   border: 1px solid var(--green-border);
 }
+.mini-btn {
+  font-size: 11px;
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  border: 1px solid var(--border2);
+  background: var(--white);
+  color: var(--text2);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.mini-btn.blue { color: var(--blue); background: var(--blue-light); border-color: #c3d7f0; }
+.mini-btn.green { color: var(--green); background: var(--green-light); border-color: var(--green-border); }
+.mini-btn.red { color: var(--red); background: var(--red-light); border-color: var(--red-border); }
+.mini-btn.gold { color: #7a5010; background: var(--accent-light); border-color: var(--accent-border); }
+.mini-btn:disabled { opacity: .45; cursor: not-allowed; }
+.order-toolbar {
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+  background:var(--cream);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  padding:10px 12px;
+  margin-bottom:12px;
+  font-size:12px;
+  color:var(--text2);
+}
+.category-row {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 0;
+  border-bottom:1px solid var(--border);
+}
+.category-row:last-child { border-bottom: none; }
 
 @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
 .fade-up { animation: fadeUp 0.4s ease both; }
@@ -402,6 +438,25 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
           <button class="logout-btn" onclick="adminLogout()">退出登录</button>
         </div>
         <p class="card-sub">买家下单后会出现在这里。核对收款码到账后，点击「确认付款」分配兑换码。</p>
+        <div style="display:grid;grid-template-columns:1fr 150px;gap:10px;margin-bottom:12px;">
+          <input class="form-input" id="order-search" type="text" placeholder="搜索订单号 / 商品 / 联系方式" style="margin-bottom:0;font-size:13px;" oninput="renderOrdersList()" />
+          <select class="product-select" id="order-status-filter" style="font-size:13px;" onchange="renderOrdersList()">
+            <option value="all">全部状态</option>
+            <option value="pending">待确认</option>
+            <option value="paid">已付款</option>
+            <option value="delivered">已发货</option>
+            <option value="cancelled">已取消</option>
+          </select>
+        </div>
+        <div class="order-toolbar" id="orders-toolbar" style="display:none;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="order-select-all" onchange="toggleAllOrders(this.checked)"> 全选</label>
+          <span id="selected-orders-count">已选 0 个</span>
+          <button class="mini-btn red" onclick="batchDeleteOrders()">批量删除未发货</button>
+          <button class="mini-btn red" onclick="batchCancelOrders()">批量取消未发货</button>
+          <button class="mini-btn green" onclick="batchMarkDelivered()">批量标记发货</button>
+          <button class="mini-btn blue" onclick="copySelectedOrderNos()">复制订单号</button>
+          <button class="mini-btn" onclick="renderOrdersList()">刷新</button>
+        </div>
         <div id="orders-list"></div>
       </div>
 
@@ -442,6 +497,40 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
       <!-- 商品管理面板 -->
       <div id="panel-products" style="display:none;">
 
+        <!-- 分类管理 -->
+        <div class="card fade-up" style="margin-bottom:1.25rem;">
+          <div class="card-title">🏷️ 分类管理</div>
+          <p class="card-sub">先创建分类，再在下方添加商品时选择分类。分类会同步显示到商城首页。</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">分类ID（英文/数字）</label>
+              <input class="form-input" id="cat-id" type="text" placeholder="例如：software" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">分类名称</label>
+              <input class="form-input" id="cat-name" type="text" placeholder="例如：软件会员" />
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">Emoji 图标</label>
+              <input class="form-input" id="cat-emoji" type="text" placeholder="📦" value="📦" maxlength="4" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">排序（数字越小越靠前）</label>
+              <input class="form-input" id="cat-sort" type="number" placeholder="10" value="10" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">副标题（可选）</label>
+            <input class="form-input" id="cat-subtitle" type="text" placeholder="例如：精选 · 稳定 · 售后" />
+          </div>
+          <button class="submit-btn" onclick="saveCategory()">保存分类 →</button>
+          <div class="add-result" id="cat-result"></div>
+          <div class="section-divider">已有分类</div>
+          <div id="category-manage-list"></div>
+        </div>
+
         <!-- 添加商品 -->
         <div class="card fade-up" style="margin-bottom:1.25rem;">
           <div class="card-title">➕ 添加商品</div>
@@ -467,9 +556,13 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
           </div>
           <div class="form-group">
             <label class="form-label">分类</label>
-            <select class="product-select" id="np-cat">
-              <option value="giftcard">🍎 苹果礼品卡</option>
-              <option value="ai">🤖 AI 订阅</option>
+            <select class="product-select" id="np-cat"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">商品状态</label>
+            <select class="product-select" id="np-stock-status">
+              <option value="in_stock">有货 / 正常销售</option>
+              <option value="out_of_stock">缺货 / 前台显示补货中</option>
             </select>
           </div>
           <div class="form-group">
@@ -540,6 +633,11 @@ const SUPABASE_KEY = 'sb_publishable_qRDJLqklLu8F5UzEAsEGqw_88m5p3WS';
 const ADMIN_OPEN_CODE_HASH = '1bd127e412c9fa9bc7aa263421367fffea3852b6147690a07b5071e3cfe4676c';
 
 let PRODUCTS = [];
+const DEFAULT_CATEGORIES = [
+  { id: 'giftcard', name: '苹果礼品卡', emoji: '🍎', subtitle: '正规 · 正品', active: true, sort_order: 1 },
+  { id: 'ai', name: 'AI 订阅', emoji: '🤖', subtitle: 'ChatGPT · Claude · Gemini', active: true, sort_order: 2 }
+];
+let CATEGORIES = [...DEFAULT_CATEGORIES];
 let adminToken = localStorage.getItem('bp_admin_token') || '';
 let adminLoggedIn = false;
 
@@ -644,6 +742,20 @@ function statusBadge(status) {
   return `<span style="display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;background:${m[1]};color:${m[2]};border:1px solid ${m[3]};">${m[0]}</span>`;
 }
 
+function getCategoryName(catId) {
+  const c = CATEGORIES.find(x => x.id === catId);
+  return c ? `${c.emoji || '📦'} ${c.name}` : (catId || '未分类');
+}
+
+function slugifyCategoryId(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40);
+}
+
 // ============================================================
 // 兑换逻辑：通过 Supabase RPC，不直接公开 cards 表
 // ============================================================
@@ -743,7 +855,15 @@ async function adminLogin() {
       body: JSON.stringify({ email, password: pwd })
     });
     const data = await res.json();
-    if (!res.ok || !data.access_token) throw new Error(data.error_description || data.msg || '登录失败');
+    if (!res.ok || !data.access_token) {
+      throw new Error(data.error_description || data.msg || data.message || data.error || '登录失败');
+    }
+
+    // 登录成功后，再用当前用户 token 调用 is_admin，明确判断 UID 是否在 admins 表。
+    const adminCheck = await sbRpc('is_admin', {}, data.access_token);
+    if (adminCheck !== true) {
+      throw new Error('登录成功，但当前账号不是管理员。请确认该账号 UID 已加入 admins 表。');
+    }
 
     adminToken = data.access_token;
     localStorage.setItem('bp_admin_token', adminToken);
@@ -753,7 +873,8 @@ async function adminLogin() {
     document.getElementById('admin-pwd').value = '';
     await renderAdminPanel();
   } catch(e) {
-    err.textContent = '登录失败：请确认邮箱/密码正确，且 UID 已加入 admins 表';
+    console.error('adminLogin error:', e);
+    err.textContent = '登录失败：' + (e.message || e);
     err.style.display = 'block';
   }
 }
@@ -770,8 +891,11 @@ function adminLogout() {
 async function renderAdminPanel() {
   if (!adminToken) return;
   try {
+    await loadCategories();
     await loadProducts();
     renderProductSelect();
+    renderCategorySelect();
+    renderCategoryManageList();
     await renderOrdersList();
     await renderStockOverview();
     await renderRedeemList();
@@ -785,9 +909,34 @@ async function renderAdminPanel() {
   }
 }
 
+async function loadCategories() {
+  try {
+    const data = await sbFetch('categories', 'order=sort_order.asc,created_at.asc', adminToken);
+    CATEGORIES = (data && data.length ? data : DEFAULT_CATEGORIES).map(c => ({
+      id: c.id,
+      name: c.name,
+      emoji: c.emoji || '📦',
+      subtitle: c.subtitle || '精选商品',
+      active: c.active !== false,
+      sort_order: c.sort_order || 0
+    }));
+  } catch(e) {
+    console.warn('categories 表未配置，使用默认分类', e);
+    CATEGORIES = [...DEFAULT_CATEGORIES];
+  }
+}
+
 async function loadProducts() {
   const data = await sbFetch('products', 'order=created_at.asc', adminToken);
-  PRODUCTS = (data || []).map(p => ({ id: p.id, name: p.name, price: p.price, cat: p.cat, unit: p.unit }));
+  PRODUCTS = (data || []).map(p => ({
+    id: p.id,
+    name: p.name,
+    price: p.price,
+    cat: p.cat,
+    unit: p.unit,
+    active: p.active !== false,
+    stock_status: p.stock_status || 'in_stock'
+  }));
 }
 
 function renderProductSelect() {
@@ -797,80 +946,170 @@ function renderProductSelect() {
     : '<option value="">请先在商品管理中添加商品</option>';
 }
 
+function renderCategorySelect() {
+  const sel = document.getElementById('np-cat');
+  if (!sel) return;
+  const activeCats = CATEGORIES.filter(c => c.active !== false);
+  sel.innerHTML = activeCats.length
+    ? activeCats.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.emoji || '📦')} ${escapeHtml(c.name)}</option>`).join('')
+    : '<option value="giftcard">🍎 苹果礼品卡</option><option value="ai">🤖 AI 订阅</option>';
+}
+
 // ============================================================
 // 订单管理
 // ============================================================
+
+function getOrderSearchFilters() {
+  const q = (document.getElementById('order-search')?.value || '').trim().toLowerCase();
+  const status = document.getElementById('order-status-filter')?.value || 'all';
+  return { q, status };
+}
+function orderMatchesFilter(o, filters) {
+  if (filters.status !== 'all' && (o.status || '') !== filters.status) return false;
+  if (!filters.q) return true;
+  const text = [o.order_no, o.product_name, o.contact, o.status, o.remark]
+    .map(x => String(x || '').toLowerCase()).join(' ');
+  return text.includes(filters.q);
+}
+function productStatusText(p) {
+  if (!p || p.active === false) return '已下架';
+  if (p.stock_status === 'out_of_stock') return '缺货/补货中';
+  return '有货';
+}
+
 async function renderOrdersList() {
   const el = document.getElementById('orders-list');
   if (!el) return;
   el.innerHTML = '<p style="font-size:13px;color:var(--text3);text-align:center;padding:1rem;">订单加载中...</p>';
   try {
-    const orders = await sbFetch('orders', 'order=created_at.desc&limit=80', adminToken);
-    if (!orders || !orders.length) {
-      el.innerHTML = '<p style="font-size:13px;color:var(--text3);text-align:center;padding:1.5rem 0;">暂无订单</p>';
+    const allOrders = await sbFetch('orders', 'order=created_at.desc&limit=200', adminToken);
+    const toolbar = document.getElementById('orders-toolbar');
+    if (toolbar) toolbar.style.display = allOrders && allOrders.length ? 'flex' : 'none';
+    const filters = getOrderSearchFilters();
+    const orders = (allOrders || []).filter(o => orderMatchesFilter(o, filters));
+    if (!orders.length) {
+      el.innerHTML = allOrders && allOrders.length
+        ? '<p style="font-size:13px;color:var(--text3);text-align:center;padding:1.5rem 0;">没有匹配的订单</p>'
+        : '<p style="font-size:13px;color:var(--text3);text-align:center;padding:1.5rem 0;">暂无订单</p>';
+      updateOrderSelectionCount();
       return;
     }
     el.innerHTML = orders.map(o => {
       const actions = [];
+      const orderNoArg = JSON.stringify(o.order_no || '');
       if (o.status === 'pending') {
-        actions.push(`<button onclick="confirmPaidOrder(${o.id}, '${escapeHtml(o.order_no)}', ${o.product_id || 'null'}, ${o.quantity || 1})" style="font-size:11px;color:var(--green);background:var(--green-light);border:1px solid var(--green-border);border-radius:6px;padding:4px 8px;cursor:pointer;">确认付款</button>`);
-        actions.push(`<button onclick="cancelOrder(${o.id})" style="font-size:11px;color:var(--red);background:var(--red-light);border:1px solid var(--red-border);border-radius:6px;padding:4px 8px;cursor:pointer;">取消</button>`);
+        actions.push(`<button class="mini-btn green" onclick="confirmPaidOrder(${o.id}, ${orderNoArg}, ${o.product_id || 'null'}, ${o.quantity || 1})">确认付款</button>`);
+        actions.push(`<button class="mini-btn red" onclick="cancelOrder(${o.id}, ${orderNoArg})">取消</button>`);
       }
       if (o.status === 'paid') {
-        actions.push(`<button onclick="copyOrderCodes('${escapeHtml(o.order_no)}')" style="font-size:11px;color:var(--blue);background:var(--blue-light);border:1px solid #c3d7f0;border-radius:6px;padding:4px 8px;cursor:pointer;">复制兑换码</button>`);
-        actions.push(`<button onclick="markDelivered(${o.id})" style="font-size:11px;color:var(--green);background:var(--green-light);border:1px solid var(--green-border);border-radius:6px;padding:4px 8px;cursor:pointer;">标记发货</button>`);
+        actions.push(`<button class="mini-btn gold" onclick="assignCodesToOrder(${o.id}, ${orderNoArg}, ${o.product_id || 'null'}, ${o.quantity || 1})">分配/补发兑换码</button>`);
+        actions.push(`<button class="mini-btn blue" onclick="copyOrderCodes(${orderNoArg})">复制兑换码</button>`);
+        actions.push(`<button class="mini-btn green" onclick="markDelivered(${o.id}, ${orderNoArg})">标记发货</button>`);
       }
       if (o.status === 'delivered') {
-        actions.push(`<button onclick="copyOrderCodes('${escapeHtml(o.order_no)}')" style="font-size:11px;color:var(--blue);background:var(--blue-light);border:1px solid #c3d7f0;border-radius:6px;padding:4px 8px;cursor:pointer;">复制兑换码</button>`);
+        actions.push(`<button class="mini-btn blue" onclick="copyOrderCodes(${orderNoArg})">复制兑换码</button>`);
+        actions.push(`<button class="mini-btn gold" onclick="rollbackDelivery(${o.id}, ${orderNoArg})">撤回发货</button>`);
+      }
+      if (o.status !== 'delivered') {
+        actions.push(`<button class="mini-btn red" onclick="deleteOrder(${o.id}, ${orderNoArg}, '${escapeHtml(o.status || '')}')">删除</button>`);
+      } else {
+        actions.push(`<span style="font-size:11px;color:var(--text3);padding:4px 0;">已发货订单不可直接删除</span>`);
       }
       return `
-        <div style="border-bottom:1px solid var(--border);padding:12px 0;">
+        <div style="border-bottom:1px solid var(--border);padding:12px 0;" data-order-row="${o.id}">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:6px;">
-            <div style="font-family:monospace;font-weight:700;font-size:13px;color:var(--text);">${escapeHtml(o.order_no)}</div>
+            <label style="display:flex;align-items:center;gap:8px;min-width:0;">
+              <input type="checkbox" class="order-check" onchange="updateOrderSelectionCount()" data-id="${o.id}" data-order-no="${escapeHtml(o.order_no || '')}" data-status="${escapeHtml(o.status || '')}">
+              <span style="font-family:monospace;font-weight:700;font-size:13px;color:var(--text);word-break:break-all;">${escapeHtml(o.order_no)}</span>
+            </label>
             ${statusBadge(o.status)}
           </div>
-          <div style="font-size:13px;color:var(--text2);line-height:1.7;">
+          <div style="font-size:13px;color:var(--text2);line-height:1.7;padding-left:26px;">
             商品：${escapeHtml(o.product_name || '未知商品')} × ${o.quantity || 1}<br>
             金额：<strong style="color:var(--accent);">¥${Number(o.price || 0).toFixed(2)}</strong>　联系方式：${escapeHtml(o.contact || '-')}<br>
-            创建：${fmtTime(o.created_at)} ${o.paid_at ? '　付款：' + fmtTime(o.paid_at) : ''}
+            创建：${fmtTime(o.created_at)} ${o.paid_at ? '　付款：' + fmtTime(o.paid_at) : ''} ${o.delivered_at ? '　发货：' + fmtTime(o.delivered_at) : ''}
           </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">${actions.join('')}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;padding-left:26px;">${actions.join('')}</div>
         </div>
       `;
     }).join('');
+    updateOrderSelectionCount();
   } catch(e) {
     console.error(e);
     el.innerHTML = '<p style="font-size:13px;color:var(--red);text-align:center;padding:1rem;">订单加载失败，请检查 RLS 和登录状态</p>';
   }
 }
 
+function getSelectedOrders() {
+  return Array.from(document.querySelectorAll('.order-check:checked')).map(cb => ({
+    id: Number(cb.dataset.id),
+    order_no: cb.dataset.orderNo || '',
+    status: cb.dataset.status || ''
+  }));
+}
+
+function updateOrderSelectionCount() {
+  const selected = getSelectedOrders();
+  const countEl = document.getElementById('selected-orders-count');
+  if (countEl) countEl.textContent = `已选 ${selected.length} 个`;
+  const all = Array.from(document.querySelectorAll('.order-check'));
+  const allBox = document.getElementById('order-select-all');
+  if (allBox) allBox.checked = all.length > 0 && selected.length === all.length;
+}
+
+function toggleAllOrders(checked) {
+  document.querySelectorAll('.order-check').forEach(cb => cb.checked = checked);
+  updateOrderSelectionCount();
+}
+
+async function restoreOrderCards(orderNo) {
+  if (!orderNo) return 0;
+  const cards = await sbFetch('cards', `order_no=eq.${encodeURIComponent(orderNo)}&order=created_at.asc`, adminToken);
+  let restored = 0;
+  for (const c of (cards || [])) {
+    await sbUpdate('cards', { id: c.id }, { order_no: null, used: false, used_at: null }, adminToken);
+    restored++;
+  }
+  return restored;
+}
+
+async function assignCodesToOrder(id, orderNo, productId, quantity) {
+  if (!orderNo || !productId) return alert('订单缺少商品信息，无法自动分配兑换码');
+  const existing = await sbFetch('cards', `order_no=eq.${encodeURIComponent(orderNo)}&order=created_at.asc`, adminToken);
+  if (existing && existing.length) {
+    const ok = confirm(`这个订单已经绑定 ${existing.length} 个兑换码。是否继续补发新的兑换码？`);
+    if (!ok) return existing.map(c => c.redeem_code);
+  }
+  const q = Math.max(1, Number(quantity || 1));
+  const cards = await sbFetch('cards', `product_id=eq.${productId}&used=eq.false&order_no=is.null&order=created_at.asc&limit=${q}`, adminToken);
+  if (!cards || cards.length < q) {
+    const ok = confirm(`这个商品库存不足，当前可分配 ${cards ? cards.length : 0} 个兑换码。仍然继续吗？`);
+    if (!ok) return [];
+  }
+  const assignedCodes = [];
+  for (const c of (cards || [])) {
+    await sbUpdate('cards', { id: c.id }, { order_no: orderNo }, adminToken);
+    assignedCodes.push(c.redeem_code);
+  }
+  await renderOrdersList();
+  await renderStockOverview();
+  await renderRedeemList();
+  if (assignedCodes.length) {
+    await navigator.clipboard.writeText(assignedCodes.join('\n')).catch(()=>{});
+    alert(`已分配兑换码：\n\n${assignedCodes.join('\n')}\n\n已尝试复制到剪贴板，请发给买家。`);
+  } else {
+    alert('没有分配到兑换码，请先补充库存或手动处理。');
+  }
+  return assignedCodes;
+}
+
 async function confirmPaidOrder(id, orderNo, productId, quantity) {
   if (!confirm(`确认订单 ${orderNo} 已付款？`)) return;
-  let assignedCodes = [];
   try {
-    const q = Math.max(1, Number(quantity || 1));
-    if (productId) {
-      const cards = await sbFetch('cards', `product_id=eq.${productId}&used=eq.false&order_no=is.null&order=created_at.asc&limit=${q}`, adminToken);
-      if ((cards || []).length >= q) {
-        for (const c of cards) {
-          await sbUpdate('cards', { id: c.id }, { order_no: orderNo }, adminToken);
-          assignedCodes.push(c.redeem_code);
-        }
-      } else {
-        const ok = confirm(`这个商品库存不足，当前可分配 ${cards ? cards.length : 0} 个兑换码。仍然确认付款吗？`);
-        if (!ok) return;
-      }
-    }
+    const assignedCodes = await assignCodesToOrder(id, orderNo, productId, quantity);
     await sbUpdate('orders', { id }, { status: 'paid', paid_at: new Date().toISOString() }, adminToken);
     await renderOrdersList();
-    await renderStockOverview();
-    await renderRedeemList();
-    if (assignedCodes.length) {
-      await navigator.clipboard.writeText(assignedCodes.join('\n')).catch(()=>{});
-      alert(`已确认付款，并分配兑换码：\n\n${assignedCodes.join('\n')}\n\n已尝试复制到剪贴板，请发给买家。`);
-    } else {
-      alert('已确认付款。注意：没有自动分配兑换码，请手动处理发货。');
-    }
+    if (!assignedCodes.length) alert('已确认付款。注意：没有自动分配兑换码，请手动处理发货。');
   } catch(e) {
     console.error(e);
     alert('确认付款失败，请检查 cards/orders 权限或刷新后重试');
@@ -889,16 +1128,124 @@ async function copyOrderCodes(orderNo) {
   }
 }
 
-async function markDelivered(id) {
-  if (!confirm('确认标记为已发货？')) return;
+async function markDelivered(id, orderNo) {
+  const cards = await sbFetch('cards', `order_no=eq.${encodeURIComponent(orderNo)}&order=created_at.asc`, adminToken).catch(()=>[]);
+  if (!cards || !cards.length) {
+    const ok = confirm('这个订单还没有绑定兑换码，仍然标记为已发货吗？');
+    if (!ok) return;
+  } else if (!confirm('确认标记为已发货？')) return;
   await sbUpdate('orders', { id }, { status: 'delivered', delivered_at: new Date().toISOString() }, adminToken);
   await renderOrdersList();
 }
 
-async function cancelOrder(id) {
-  if (!confirm('确认取消这个订单？')) return;
-  await sbUpdate('orders', { id }, { status: 'cancelled' }, adminToken);
-  await renderOrdersList();
+async function rollbackDelivery(id, orderNo) {
+  if (!confirm('确认撤回发货？系统会把该订单绑定的兑换码恢复为未使用库存，并把订单状态改回「已付款」。请只在确认卡密未被实际使用/客户已退回有效卡密时操作。')) return;
+  try {
+    const restored = await restoreOrderCards(orderNo);
+    await sbUpdate('orders', { id }, { status: 'paid', delivered_at: null }, adminToken);
+    await renderOrdersList();
+    await renderStockOverview();
+    await renderRedeemList();
+    alert(`已撤回发货，恢复 ${restored} 个兑换码到库存。`);
+  } catch(e) {
+    console.error(e);
+    alert('撤回失败，请刷新后重试');
+  }
+}
+
+async function cancelOrder(id, orderNo) {
+  if (!confirm('确认取消这个订单？已绑定的兑换码会恢复到库存。')) return;
+  try {
+    await restoreOrderCards(orderNo);
+    await sbUpdate('orders', { id }, { status: 'cancelled' }, adminToken);
+    await renderOrdersList();
+    await renderStockOverview();
+    await renderRedeemList();
+  } catch(e) {
+    alert('取消失败，请刷新后重试');
+  }
+}
+
+async function deleteOrder(id, orderNo, status) {
+  if (status === 'delivered') {
+    alert('已发货订单不能直接删除。请先确认售后退回的卡密未使用，再点击「撤回发货」恢复库存；撤回后可再删除订单。');
+    return;
+  }
+  const restoreNote = status === 'paid' ? '\n\n该订单处于已付款但未发货状态，如已绑定兑换码，删除时会恢复到库存。' : '';
+  if (!confirm(`确认删除订单 ${orderNo}？${restoreNote}`)) return;
+  try {
+    if (status === 'paid') await restoreOrderCards(orderNo);
+    await sbDelete('orders', { id }, adminToken);
+    await renderOrdersList();
+    await renderStockOverview();
+    await renderRedeemList();
+  } catch(e) {
+    console.error(e);
+    alert('删除失败，请检查 orders/cards 权限或刷新后重试');
+  }
+}
+
+async function batchDeleteOrders() {
+  const rows = getSelectedOrders();
+  if (!rows.length) return alert('请先选中订单');
+  const delivered = rows.filter(o => o.status === 'delivered');
+  if (delivered.length) {
+    return alert(`已选订单中包含 ${delivered.length} 个已发货订单，不能直接删除。请先逐个撤回发货后再删除。`);
+  }
+  if (!confirm(`确认批量删除 ${rows.length} 个未发货订单？
+
+已付款但未发货订单如已绑定兑换码，会恢复到库存。`)) return;
+  try {
+    for (const o of rows) {
+      if (o.status === 'paid') await restoreOrderCards(o.order_no);
+      await sbDelete('orders', { id: o.id }, adminToken);
+    }
+    await renderOrdersList();
+    await renderStockOverview();
+    await renderRedeemList();
+  } catch(e) {
+    alert('批量删除失败，请刷新后重试');
+  }
+}
+
+async function batchCancelOrders() {
+  const rows = getSelectedOrders();
+  if (!rows.length) return alert('请先选中订单');
+  const delivered = rows.filter(o => o.status === 'delivered');
+  if (delivered.length) return alert(`已选订单中包含 ${delivered.length} 个已发货订单，不能批量取消。请先撤回发货。`);
+  if (!confirm(`确认批量取消 ${rows.length} 个未发货订单？已绑定的兑换码会恢复到库存。`)) return;
+  try {
+    for (const o of rows) {
+      await restoreOrderCards(o.order_no);
+      await sbUpdate('orders', { id: o.id }, { status: 'cancelled' }, adminToken);
+    }
+    await renderOrdersList();
+    await renderStockOverview();
+    await renderRedeemList();
+  } catch(e) {
+    alert('批量取消失败，请刷新后重试');
+  }
+}
+
+async function batchMarkDelivered() {
+  const rows = getSelectedOrders().filter(o => o.status === 'paid');
+  if (!rows.length) return alert('请选择状态为「已付款」的订单');
+  if (!confirm(`确认批量标记 ${rows.length} 个已付款订单为已发货？`)) return;
+  try {
+    for (const o of rows) {
+      await sbUpdate('orders', { id: o.id }, { status: 'delivered', delivered_at: new Date().toISOString() }, adminToken);
+    }
+    await renderOrdersList();
+  } catch(e) {
+    alert('批量标记失败，请刷新后重试');
+  }
+}
+
+function copySelectedOrderNos() {
+  const rows = getSelectedOrders();
+  if (!rows.length) return alert('请先选中订单');
+  const text = rows.map(o => o.order_no).join('\n');
+  navigator.clipboard.writeText(text).then(() => alert(`已复制 ${rows.length} 个订单号`));
 }
 
 // ============================================================
@@ -1039,6 +1386,88 @@ function previewImg(input) {
   reader.readAsDataURL(input.files[0]);
 }
 
+
+// ============================================================
+// 分类管理
+// ============================================================
+function showCatResult(type, msg) {
+  const el = document.getElementById('cat-result');
+  if (!el) return;
+  el.className = 'add-result ' + type;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function saveCategory() {
+  const rawId = document.getElementById('cat-id').value;
+  const id = slugifyCategoryId(rawId);
+  const name = document.getElementById('cat-name').value.trim();
+  const emoji = document.getElementById('cat-emoji').value.trim() || '📦';
+  const subtitle = document.getElementById('cat-subtitle').value.trim() || '精选商品';
+  const sort_order = Number(document.getElementById('cat-sort').value || 10);
+  if (!id) return showCatResult('err', '请填写分类ID，只能使用英文、数字、横线或下划线');
+  if (!name) return showCatResult('err', '请填写分类名称');
+  try {
+    await sbInsert('categories', [{ id, name, emoji, subtitle, sort_order, active: true }], adminToken);
+    ['cat-id','cat-name','cat-subtitle'].forEach(x => document.getElementById(x).value = '');
+    document.getElementById('cat-emoji').value = '📦';
+    document.getElementById('cat-sort').value = '10';
+    showCatResult('ok', `✅ 分类「${name}」已保存`);
+    await loadCategories();
+    renderCategorySelect();
+    renderCategoryManageList();
+    await renderProductManageList();
+  } catch(e) {
+    console.error(e);
+    showCatResult('err', '保存分类失败：请先执行 categories SQL，或检查分类ID是否重复');
+  }
+}
+
+function renderCategoryManageList() {
+  const el = document.getElementById('category-manage-list');
+  if (!el) return;
+  if (!CATEGORIES.length) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--text3);text-align:center;padding:1rem 0;">暂无分类</p>';
+    return;
+  }
+  el.innerHTML = CATEGORIES.map(c => `
+    <div class="category-row">
+      <div style="font-size:22px;width:34px;text-align:center;">${escapeHtml(c.emoji || '📦')}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:600;color:var(--text);">${escapeHtml(c.name)}</div>
+        <div style="font-size:12px;color:var(--text3);">ID：${escapeHtml(c.id)} · 排序：${Number(c.sort_order || 0)} · ${c.active ? '启用中' : '已停用'}</div>
+      </div>
+      <button class="mini-btn blue" onclick="toggleCategoryActive('${escapeHtml(c.id)}', ${c.active ? 'false' : 'true'})">${c.active ? '停用' : '启用'}</button>
+      <button class="mini-btn red" onclick="deleteCategory('${escapeHtml(c.id)}')">删除</button>
+    </div>
+  `).join('');
+}
+
+async function toggleCategoryActive(id, active) {
+  try {
+    await sbUpdate('categories', { id }, { active }, adminToken);
+    await loadCategories();
+    renderCategorySelect();
+    renderCategoryManageList();
+  } catch(e) {
+    alert('修改分类状态失败，请确认 categories 表权限正确');
+  }
+}
+
+async function deleteCategory(id) {
+  const used = PRODUCTS.some(p => p.cat === id);
+  if (used) return alert('这个分类下还有商品，不能删除。请先把商品删除/改到其他分类，或者停用分类。');
+  if (!confirm(`确认删除分类 ${id}？`)) return;
+  try {
+    await sbDelete('categories', { id }, adminToken);
+    await loadCategories();
+    renderCategorySelect();
+    renderCategoryManageList();
+  } catch(e) {
+    alert('删除分类失败，请检查权限或稍后重试');
+  }
+}
+
 // ============================================================
 // 商品管理
 // ============================================================
@@ -1048,6 +1477,7 @@ async function saveNewProduct() {
   const price = parseFloat(document.getElementById('np-price').value);
   const unit = document.getElementById('np-unit').value.trim() || '张';
   const cat = document.getElementById('np-cat').value;
+  const stock_status = document.getElementById('np-stock-status')?.value || 'in_stock';
   const badgeRaw = document.getElementById('np-badge').value;
   const [badge, badge_class] = badgeRaw.split('|');
   const hot = document.getElementById('np-hot').checked;
@@ -1064,12 +1494,14 @@ async function saveNewProduct() {
       cat, name, description, price, unit,
       badge, badge_class, hot, emoji,
       img: imgData || imgUrl || '',
-      active: true
+      active: true,
+      stock_status
     }], adminToken);
 
     ['np-name','np-desc','np-price','np-img-url'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('np-unit').value = '张';
     document.getElementById('np-hot').checked = false;
+    const st = document.getElementById('np-stock-status'); if (st) st.value = 'in_stock';
     document.getElementById('np-emoji').value = '🍎';
     document.getElementById('np-img-preview').style.display = 'none';
     document.getElementById('np-img-placeholder').style.display = '';
@@ -1079,6 +1511,7 @@ async function saveNewProduct() {
     showNpResult('ok', `✅ 商品「${name}」已保存！刷新商城即可看到`);
     await loadProducts();
     renderProductSelect();
+    renderCategorySelect();
     renderProductManageList();
     await renderStockOverview();
   } catch(e) {
@@ -1109,10 +1542,11 @@ async function renderProductManageList() {
         </div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(p.name)}</div>
-          <div style="font-size:12px;color:var(--text3);">¥${parseFloat(p.price).toFixed(2)} / ${escapeHtml(p.unit || '件')} · ${p.cat==='giftcard'?'礼品卡':'AI订阅'} · ${p.active ? '上架中' : '已下架'}</div>
+          <div style="font-size:12px;color:var(--text3);">¥${parseFloat(p.price).toFixed(2)} / ${escapeHtml(p.unit || '件')} · ${escapeHtml(getCategoryName(p.cat))} · ${productStatusText(p)}</div>
         </div>
-        <button onclick="toggleProductActive(${p.id}, ${p.active ? 'false' : 'true'})" style="font-size:11px;color:var(--blue);background:var(--blue-light);border:1px solid #c3d7f0;border-radius:6px;padding:4px 10px;cursor:pointer;flex-shrink:0;">${p.active ? '下架' : '上架'}</button>
-        <button onclick="deleteProduct(${p.id}, this.dataset.name)" data-name="${escapeHtml(p.name)}" style="font-size:11px;color:var(--red);background:var(--red-light);border:1px solid var(--red-border);border-radius:6px;padding:4px 10px;cursor:pointer;flex-shrink:0;">删除</button>
+        <button class="mini-btn blue" onclick="toggleProductActive(${p.id}, ${p.active ? 'false' : 'true'})">${p.active ? '下架' : '上架'}</button>
+        <button class="mini-btn gold" onclick="toggleProductStockStatus(${p.id}, '${p.stock_status === 'out_of_stock' ? 'in_stock' : 'out_of_stock'}')">${p.stock_status === 'out_of_stock' ? '标为有货' : '标为缺货'}</button>
+        <button class="mini-btn red" onclick="deleteProduct(${p.id}, this.dataset.name)" data-name="${escapeHtml(p.name)}">删除</button>
       </div>
     `).join('') + `<p style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center;">共 ${products.length} 个商品</p>`;
   } catch(e) {
@@ -1123,7 +1557,16 @@ async function renderProductManageList() {
 async function toggleProductActive(id, active) {
   await sbUpdate('products', {id}, {active}, adminToken);
   await loadProducts();
+  renderProductSelect();
   renderProductManageList();
+  await renderStockOverview();
+}
+
+async function toggleProductStockStatus(id, stock_status) {
+  await sbUpdate('products', {id}, {stock_status}, adminToken);
+  await loadProducts();
+  renderProductManageList();
+  await renderStockOverview();
 }
 
 async function deleteProduct(id, name) {
@@ -1133,6 +1576,7 @@ async function deleteProduct(id, name) {
     showNpResult('ok', `已删除商品「${name}」`);
     await loadProducts();
     renderProductSelect();
+    renderCategorySelect();
     renderProductManageList();
     await renderStockOverview();
   } catch(e) {
