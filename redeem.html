@@ -797,11 +797,12 @@ async function deleteItem(id) {
 // 页面切换
 // ============================================================
 function switchTab(tab) {
-  document.querySelectorAll('.page-tab').forEach((t, i) => {
-    t.classList.toggle('active', (i === 0 && tab === 'redeem') || (i === 1 && tab === 'admin'));
-  });
   document.getElementById('tab-redeem').style.display = tab === 'redeem' ? '' : 'none';
   document.getElementById('tab-admin').style.display = tab === 'admin' ? '' : 'none';
+  document.querySelectorAll('.page-tab').forEach(t => {
+    const isTarget = t.getAttribute('onclick') && t.getAttribute('onclick').includes(`'${tab}'`);
+    t.classList.toggle('active', isTarget);
+  });
 }
 
 // ============================================================
