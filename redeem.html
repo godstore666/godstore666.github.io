@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>菠萝小铺 — 卡密兑换 v3</title>
+<title>菠萝小铺 — 卡密兑换 v4</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -372,13 +372,17 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
     <!-- 登录框 -->
     <div class="card fade-up admin-login" id="admin-login">
       <div class="card-title">🔧 后台管理</div>
-      <p class="card-sub">请输入管理密码进入后台</p>
+      <p class="card-sub">请输入你在 Supabase Authentication 创建的后台邮箱和密码</p>
       <div class="form-group">
-        <label class="form-label">管理密码</label>
-        <input class="form-input" id="admin-pwd" type="password" placeholder="请输入密码" onkeydown="if(event.key==='Enter')adminLogin()" />
+        <label class="form-label">后台邮箱</label>
+        <input class="form-input" id="admin-email" type="email" placeholder="请输入后台邮箱" autocomplete="username" />
       </div>
-      <button class="submit-btn" onclick="adminLogin()">进入后台 →</button>
-      <div class="add-result err" id="login-err" style="display:none;">密码错误，请重试</div>
+      <div class="form-group">
+        <label class="form-label">后台密码</label>
+        <input class="form-input" id="admin-pwd" type="password" placeholder="请输入后台密码" autocomplete="current-password" onkeydown="if(event.key==='Enter')adminLogin()" />
+      </div>
+      <button class="submit-btn" onclick="adminLogin()">登录后台 →</button>
+      <div class="add-result err" id="login-err" style="display:none;">登录失败，请重试</div>
     </div>
 
     <!-- 管理面板 -->
@@ -386,12 +390,22 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
 
       <!-- 后台子导航 -->
       <div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap;">
-        <button class="admin-sub-btn active" id="sub-stock" onclick="adminSubTab('stock')">📦 库存管理</button>
+        <button class="admin-sub-btn active" id="sub-orders" onclick="adminSubTab('orders')">🧾 订单管理</button>
+        <button class="admin-sub-btn" id="sub-stock" onclick="adminSubTab('stock')">📦 库存管理</button>
         <button class="admin-sub-btn" id="sub-products" onclick="adminSubTab('products')">🛍️ 商品管理</button>
         <button class="admin-sub-btn" id="sub-codes" onclick="adminSubTab('codes')">🗒️ 兑换码</button>
       </div>
 
-      <div id="panel-stock">
+      <div class="card fade-up" id="panel-orders" style="margin-bottom:1.25rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <div class="card-title" style="margin-bottom:0;">🧾 订单管理</div>
+          <button class="logout-btn" onclick="adminLogout()">退出登录</button>
+        </div>
+        <p class="card-sub">买家下单后会出现在这里。核对收款码到账后，点击「确认付款」分配兑换码。</p>
+        <div id="orders-list"></div>
+      </div>
+
+      <div id="panel-stock" style="display:none;">
       <!-- 库存概览 -->
       <div class="card fade-up" style="margin-bottom:1.25rem;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
@@ -518,8 +532,23 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
 // ============================================================
 // 配置
 // ============================================================
-// 密码用SHA256哈希存储，防止F12泄露明文
-const ADMIN_PASSWORD_HASH = '1bd127e412c9fa9bc7aa263421367fffea3852b6147690a07b5071e3cfe4676c';
+const SUPABASE_URL = 'https://ffqlpckpjqgileyoummq.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_qRDJLqklLu8F5UzEAsEGqw_88m5p3WS';
+
+// 这个暗码只负责“显示后台登录入口”，不再负责真正登录。
+// 真正后台权限由 Supabase Auth + RLS 控制。
+const ADMIN_OPEN_CODE_HASH = '1bd127e412c9fa9bc7aa263421367fffea3852b6147690a07b5071e3cfe4676c';
+
+let PRODUCTS = [];
+let adminToken = localStorage.getItem('bp_admin_token') || '';
+let adminLoggedIn = false;
+
+// ============================================================
+// 通用工具
+// ============================================================
+function escapeHtml(str = '') {
+  return String(str).replace(/[&<>'"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[s]));
+}
 
 async function hashPassword(pwd) {
   const msgBuffer = new TextEncoder().encode(pwd);
@@ -527,61 +556,68 @@ async function hashPassword(pwd) {
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
-const SUPABASE_URL = 'https://ffqlpckpjqgileyoummq.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_qRDJLqklLu8F5UzEAsEGqw_88m5p3WS';
 
-let PRODUCTS = []; // 从Supabase加载
+function headers(token = SUPABASE_KEY, json = false) {
+  const h = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': 'Bearer ' + token
+  };
+  if (json) h['Content-Type'] = 'application/json';
+  return h;
+}
 
-// ============================================================
-// Supabase 请求函数
-// ============================================================
-async function sbFetch(table, params = '') {
+async function sbFetch(table, params = '', token = SUPABASE_KEY) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+    headers: headers(token)
   });
+  if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
-async function sbInsert(table, body) {
+async function sbInsert(table, body, token = adminToken) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
     method: 'POST',
     headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
-      'Content-Type': 'application/json',
+      ...headers(token, true),
       'Prefer': 'return=representation'
     },
     body: JSON.stringify(body)
   });
+  if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
-async function sbUpdate(table, match, body) {
-  const params = Object.entries(match).map(([k,v]) => `${k}=eq.${v}`).join('&');
+async function sbUpdate(table, match, body, token = adminToken) {
+  const params = Object.entries(match).map(([k,v]) => `${encodeURIComponent(k)}=eq.${encodeURIComponent(v)}`).join('&');
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
     method: 'PATCH',
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
-      'Content-Type': 'application/json'
-    },
+    headers: headers(token, true),
     body: JSON.stringify(body)
   });
-  return res.ok;
+  if (!res.ok) throw new Error(await res.text());
+  return true;
 }
 
-async function sbDelete(table, match) {
-  const params = Object.entries(match).map(([k,v]) => `${k}=eq.${v}`).join('&');
+async function sbDelete(table, match, token = adminToken) {
+  const params = Object.entries(match).map(([k,v]) => `${encodeURIComponent(k)}=eq.${encodeURIComponent(v)}`).join('&');
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
     method: 'DELETE',
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+    headers: headers(token)
   });
-  return res.ok;
+  if (!res.ok) throw new Error(await res.text());
+  return true;
 }
 
-// ============================================================
-// 工具函数
-// ============================================================
+async function sbRpc(fn, body, token = SUPABASE_KEY) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+    method: 'POST',
+    headers: headers(token, true),
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 function genRedeemCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = 'PINE';
@@ -592,10 +628,25 @@ function genRedeemCode() {
   return code;
 }
 
+function fmtTime(t) {
+  if (!t) return '-';
+  try { return new Date(t).toLocaleString('zh-CN', {hour12:false}); } catch { return t; }
+}
+
+function statusBadge(status) {
+  const map = {
+    pending: ['待确认', 'var(--accent-light)', '#7a5010', 'var(--accent-border)'],
+    paid: ['已付款', 'var(--green-light)', 'var(--green)', 'var(--green-border)'],
+    delivered: ['已发货', 'var(--blue-light)', 'var(--blue)', '#c3d7f0'],
+    cancelled: ['已取消', 'var(--red-light)', 'var(--red)', 'var(--red-border)']
+  };
+  const m = map[status] || [status || '未知', 'var(--cream2)', 'var(--text2)', 'var(--border)'];
+  return `<span style="display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;background:${m[1]};color:${m[2]};border:1px solid ${m[3]};">${m[0]}</span>`;
+}
+
 // ============================================================
-// 兑换逻辑
+// 兑换逻辑：通过 Supabase RPC，不直接公开 cards 表
 // ============================================================
-// 限流：记录兑换失败次数，防止暴力破解
 const REDEEM_LIMIT = { count: 0, lockUntil: 0 };
 
 async function doRedeem() {
@@ -604,16 +655,14 @@ async function doRedeem() {
   document.getElementById('redeem-success').style.display = 'none';
   document.getElementById('redeem-error').style.display = 'none';
 
-  // 暗码：哈希比对，防止F12看到明文
   const codeHash = await hashPassword(code);
-  if (codeHash === ADMIN_PASSWORD_HASH) {
-    document.getElementById('admin-tab').style.display = '';
+  if (codeHash === ADMIN_OPEN_CODE_HASH) {
+    showAdminEntry();
     document.getElementById('redeem-code').value = '';
     switchTab('admin');
     return;
   }
 
-  // 限流检查：失败5次锁定10分钟
   const now = Date.now();
   if (REDEEM_LIMIT.lockUntil > now) {
     const mins = Math.ceil((REDEEM_LIMIT.lockUntil - now) / 60000);
@@ -628,30 +677,24 @@ async function doRedeem() {
   btn.textContent = '兑换中...';
 
   try {
-    const rows = await sbFetch('cards', `redeem_code=eq.${upperCode}`);
-    if (!rows || rows.length === 0) {
+    const result = await sbRpc('redeem_card', { input_code: upperCode });
+    if (result && result.ok) {
+      REDEEM_LIMIT.count = 0;
+      document.getElementById('card-code-display').textContent = result.card_code;
+      document.getElementById('redeem-success').style.display = 'block';
+    } else {
       REDEEM_LIMIT.count++;
       if (REDEEM_LIMIT.count >= 5) {
         REDEEM_LIMIT.lockUntil = Date.now() + 10 * 60 * 1000;
         REDEEM_LIMIT.count = 0;
         showRedeemError('失败次数过多，已锁定10分钟，请检查兑换码是否正确');
       } else {
-        showRedeemError(`兑换码无效，还可尝试 ${5 - REDEEM_LIMIT.count} 次`);
+        showRedeemError((result && result.message) || `兑换码无效，还可尝试 ${5 - REDEEM_LIMIT.count} 次`);
       }
-    } else if (rows[0].used) {
-      REDEEM_LIMIT.count++;
-      showRedeemError('该兑换码已被使用，每个兑换码只能使用一次');
-    } else {
-      await sbUpdate('cards', {id: rows[0].id}, {
-        used: true,
-        used_at: new Date().toISOString()
-      });
-      REDEEM_LIMIT.count = 0; // 成功后重置失败计数
-      document.getElementById('card-code-display').textContent = rows[0].card_code;
-      document.getElementById('redeem-success').style.display = 'block';
     }
   } catch(e) {
-    showRedeemError('网络错误，请稍后重试');
+    console.error(e);
+    showRedeemError('兑换接口未配置或网络错误。请先在 Supabase 执行 supabase_v1_patch.sql');
   }
 
   btn.disabled = false;
@@ -673,59 +716,199 @@ function copyCode() {
 }
 
 // ============================================================
-// 后台管理
+// 后台登录：Supabase Auth
 // ============================================================
-let adminLoggedIn = false;
+function showAdminEntry() {
+  document.getElementById('admin-tab').style.display = '';
+}
 
 async function adminLogin() {
+  const email = document.getElementById('admin-email').value.trim();
   const pwd = document.getElementById('admin-pwd').value;
-  const pwdHash = await hashPassword(pwd);
-  if (pwdHash === ADMIN_PASSWORD_HASH) {
+  const err = document.getElementById('login-err');
+  if (!email || !pwd) {
+    err.textContent = '请输入邮箱和密码';
+    err.style.display = 'block';
+    return;
+  }
+
+  err.style.display = 'none';
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email, password: pwd })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.access_token) throw new Error(data.error_description || data.msg || '登录失败');
+
+    adminToken = data.access_token;
+    localStorage.setItem('bp_admin_token', adminToken);
     adminLoggedIn = true;
     document.getElementById('admin-login').style.display = 'none';
     document.getElementById('admin-panel').style.display = 'block';
-    document.getElementById('login-err').style.display = 'none';
-    renderAdminPanel();
-  } else {
-    document.getElementById('login-err').style.display = 'block';
     document.getElementById('admin-pwd').value = '';
+    await renderAdminPanel();
+  } catch(e) {
+    err.textContent = '登录失败：请确认邮箱/密码正确，且 UID 已加入 admins 表';
+    err.style.display = 'block';
   }
 }
 
 function adminLogout() {
   adminLoggedIn = false;
+  adminToken = '';
+  localStorage.removeItem('bp_admin_token');
   document.getElementById('admin-login').style.display = 'block';
   document.getElementById('admin-panel').style.display = 'none';
   document.getElementById('admin-pwd').value = '';
 }
 
 async function renderAdminPanel() {
-  await loadProducts();
-  renderProductSelect();
-  await renderStockOverview();
-  await renderRedeemList();
-  renderProductManageList();
+  if (!adminToken) return;
+  try {
+    await loadProducts();
+    renderProductSelect();
+    await renderOrdersList();
+    await renderStockOverview();
+    await renderRedeemList();
+    await renderProductManageList();
+  } catch(e) {
+    console.error(e);
+    if (String(e.message || e).includes('JWT') || String(e.message || e).includes('401')) {
+      alert('登录已过期，请重新登录');
+      adminLogout();
+    }
+  }
 }
 
 async function loadProducts() {
-  try {
-    const data = await sbFetch('products', 'order=created_at.asc');
-    PRODUCTS = (data || []).map(p => ({ id: p.id, name: p.name }));
-  } catch(e) { console.log('loadProducts error', e); }
+  const data = await sbFetch('products', 'order=created_at.asc', adminToken);
+  PRODUCTS = (data || []).map(p => ({ id: p.id, name: p.name, price: p.price, cat: p.cat, unit: p.unit }));
 }
 
 function renderProductSelect() {
   const sel = document.getElementById('admin-product-select');
   sel.innerHTML = PRODUCTS.length
-    ? PRODUCTS.map(p => `<option value="${p.id}">${p.name}</option>`).join('')
+    ? PRODUCTS.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('')
     : '<option value="">请先在商品管理中添加商品</option>';
 }
 
+// ============================================================
+// 订单管理
+// ============================================================
+async function renderOrdersList() {
+  const el = document.getElementById('orders-list');
+  if (!el) return;
+  el.innerHTML = '<p style="font-size:13px;color:var(--text3);text-align:center;padding:1rem;">订单加载中...</p>';
+  try {
+    const orders = await sbFetch('orders', 'order=created_at.desc&limit=80', adminToken);
+    if (!orders || !orders.length) {
+      el.innerHTML = '<p style="font-size:13px;color:var(--text3);text-align:center;padding:1.5rem 0;">暂无订单</p>';
+      return;
+    }
+    el.innerHTML = orders.map(o => {
+      const actions = [];
+      if (o.status === 'pending') {
+        actions.push(`<button onclick="confirmPaidOrder(${o.id}, '${escapeHtml(o.order_no)}', ${o.product_id || 'null'}, ${o.quantity || 1})" style="font-size:11px;color:var(--green);background:var(--green-light);border:1px solid var(--green-border);border-radius:6px;padding:4px 8px;cursor:pointer;">确认付款</button>`);
+        actions.push(`<button onclick="cancelOrder(${o.id})" style="font-size:11px;color:var(--red);background:var(--red-light);border:1px solid var(--red-border);border-radius:6px;padding:4px 8px;cursor:pointer;">取消</button>`);
+      }
+      if (o.status === 'paid') {
+        actions.push(`<button onclick="copyOrderCodes('${escapeHtml(o.order_no)}')" style="font-size:11px;color:var(--blue);background:var(--blue-light);border:1px solid #c3d7f0;border-radius:6px;padding:4px 8px;cursor:pointer;">复制兑换码</button>`);
+        actions.push(`<button onclick="markDelivered(${o.id})" style="font-size:11px;color:var(--green);background:var(--green-light);border:1px solid var(--green-border);border-radius:6px;padding:4px 8px;cursor:pointer;">标记发货</button>`);
+      }
+      if (o.status === 'delivered') {
+        actions.push(`<button onclick="copyOrderCodes('${escapeHtml(o.order_no)}')" style="font-size:11px;color:var(--blue);background:var(--blue-light);border:1px solid #c3d7f0;border-radius:6px;padding:4px 8px;cursor:pointer;">复制兑换码</button>`);
+      }
+      return `
+        <div style="border-bottom:1px solid var(--border);padding:12px 0;">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:6px;">
+            <div style="font-family:monospace;font-weight:700;font-size:13px;color:var(--text);">${escapeHtml(o.order_no)}</div>
+            ${statusBadge(o.status)}
+          </div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.7;">
+            商品：${escapeHtml(o.product_name || '未知商品')} × ${o.quantity || 1}<br>
+            金额：<strong style="color:var(--accent);">¥${Number(o.price || 0).toFixed(2)}</strong>　联系方式：${escapeHtml(o.contact || '-')}<br>
+            创建：${fmtTime(o.created_at)} ${o.paid_at ? '　付款：' + fmtTime(o.paid_at) : ''}
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">${actions.join('')}</div>
+        </div>
+      `;
+    }).join('');
+  } catch(e) {
+    console.error(e);
+    el.innerHTML = '<p style="font-size:13px;color:var(--red);text-align:center;padding:1rem;">订单加载失败，请检查 RLS 和登录状态</p>';
+  }
+}
+
+async function confirmPaidOrder(id, orderNo, productId, quantity) {
+  if (!confirm(`确认订单 ${orderNo} 已付款？`)) return;
+  let assignedCodes = [];
+  try {
+    const q = Math.max(1, Number(quantity || 1));
+    if (productId) {
+      const cards = await sbFetch('cards', `product_id=eq.${productId}&used=eq.false&order_no=is.null&order=created_at.asc&limit=${q}`, adminToken);
+      if ((cards || []).length >= q) {
+        for (const c of cards) {
+          await sbUpdate('cards', { id: c.id }, { order_no: orderNo }, adminToken);
+          assignedCodes.push(c.redeem_code);
+        }
+      } else {
+        const ok = confirm(`这个商品库存不足，当前可分配 ${cards ? cards.length : 0} 个兑换码。仍然确认付款吗？`);
+        if (!ok) return;
+      }
+    }
+    await sbUpdate('orders', { id }, { status: 'paid', paid_at: new Date().toISOString() }, adminToken);
+    await renderOrdersList();
+    await renderStockOverview();
+    await renderRedeemList();
+    if (assignedCodes.length) {
+      await navigator.clipboard.writeText(assignedCodes.join('\n')).catch(()=>{});
+      alert(`已确认付款，并分配兑换码：\n\n${assignedCodes.join('\n')}\n\n已尝试复制到剪贴板，请发给买家。`);
+    } else {
+      alert('已确认付款。注意：没有自动分配兑换码，请手动处理发货。');
+    }
+  } catch(e) {
+    console.error(e);
+    alert('确认付款失败，请检查 cards/orders 权限或刷新后重试');
+  }
+}
+
+async function copyOrderCodes(orderNo) {
+  try {
+    const cards = await sbFetch('cards', `order_no=eq.${encodeURIComponent(orderNo)}&order=created_at.asc`, adminToken);
+    if (!cards || !cards.length) return alert('这个订单还没有绑定兑换码');
+    const text = cards.map(c => c.redeem_code).join('\n');
+    await navigator.clipboard.writeText(text);
+    alert(`已复制兑换码：\n\n${text}`);
+  } catch(e) {
+    alert('复制失败，请稍后重试');
+  }
+}
+
+async function markDelivered(id) {
+  if (!confirm('确认标记为已发货？')) return;
+  await sbUpdate('orders', { id }, { status: 'delivered', delivered_at: new Date().toISOString() }, adminToken);
+  await renderOrdersList();
+}
+
+async function cancelOrder(id) {
+  if (!confirm('确认取消这个订单？')) return;
+  await sbUpdate('orders', { id }, { status: 'cancelled' }, adminToken);
+  await renderOrdersList();
+}
+
+// ============================================================
+// 库存与卡密
+// ============================================================
 async function renderStockOverview() {
   const table = document.getElementById('stock-overview');
   table.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:1rem;color:var(--text3);font-size:13px;">加载中...</td></tr>';
   try {
-    const cards = await sbFetch('cards', 'order=created_at.asc');
+    const cards = await sbFetch('cards', 'order=created_at.asc', adminToken);
     const stats = {};
     PRODUCTS.forEach(p => { stats[p.id] = { name: p.name, total: 0, used: 0, avail: 0 }; });
     (cards || []).forEach(c => {
@@ -736,14 +919,12 @@ async function renderStockOverview() {
       }
     });
     table.innerHTML = `
-      <tr>
-        <th style="width:45%;">商品</th><th>可用</th><th>已用</th><th>总计</th>
-      </tr>
+      <tr><th style="width:45%;">商品</th><th>可用</th><th>已用</th><th>总计</th></tr>
       ${PRODUCTS.map(p => {
         const s = stats[p.id] || {avail:0,used:0,total:0};
         const low = s.avail <= 2;
         return `<tr>
-          <td>${p.name}</td>
+          <td>${escapeHtml(p.name)}</td>
           <td><span class="stock-num ${low?'stock-low':''}">${s.avail}</span>${low&&s.avail>0?' ⚠️':''}</td>
           <td style="color:var(--text3);">${s.used}</td>
           <td style="color:var(--text3);">${s.total}</td>
@@ -751,7 +932,7 @@ async function renderStockOverview() {
       }).join('')}
     `;
   } catch(e) {
-    table.innerHTML = '<tr><td colspan="4" style="color:var(--red);font-size:13px;">加载失败，请检查网络</td></tr>';
+    table.innerHTML = '<tr><td colspan="4" style="color:var(--red);font-size:13px;">加载失败，请检查登录状态</td></tr>';
   }
 }
 
@@ -773,8 +954,7 @@ async function addCards() {
       card_code: cardCode,
       used: false
     }));
-
-    await sbInsert('cards', newItems);
+    await sbInsert('cards', newItems, adminToken);
     document.getElementById('admin-cards-input').value = '';
     const codeList = newItems.map(i => i.redeem_code).join('\n');
     resultEl.style.whiteSpace = 'pre-line';
@@ -782,7 +962,8 @@ async function addCards() {
     await renderStockOverview();
     await renderRedeemList();
   } catch(e) {
-    resultEl.className='add-result err'; resultEl.textContent='保存失败，请重试';
+    console.error(e);
+    resultEl.className='add-result err'; resultEl.textContent='保存失败，请确认你已登录后台且 RLS 允许管理员写入';
   }
 }
 
@@ -790,22 +971,21 @@ async function renderRedeemList() {
   const el = document.getElementById('redeem-list');
   el.innerHTML = '<p style="font-size:13px;color:var(--text3);text-align:center;padding:1rem;">加载中...</p>';
   try {
-    const data = await sbFetch('cards', 'order=created_at.desc');
+    const data = await sbFetch('cards', 'order=created_at.desc', adminToken);
     if (!data || !data.length) {
       el.innerHTML = '<p style="font-size:13px;color:var(--text3);text-align:center;padding:1.5rem 0;">暂无记录，请先添加卡密</p>';
       return;
     }
     el.innerHTML = `
       <table class="stock-table" style="margin-top:0.5rem;">
-        <tr><th>兑换码</th><th>商品</th><th>状态</th><th>操作</th></tr>
+        <tr><th>兑换码</th><th>商品</th><th>状态</th><th>订单</th><th>操作</th></tr>
         ${data.map(item => {
           const product = PRODUCTS.find(p => p.id === item.product_id);
           return `<tr>
-            <td style="font-family:monospace;font-size:12px;color:var(--text);">${item.redeem_code}</td>
-            <td style="font-size:12px;">${product ? product.name : '未知'}</td>
-            <td>${item.used
-              ? '<span style="font-size:11px;color:var(--text3);">已用</span>'
-              : '<span class="order-badge">可用</span>'}</td>
+            <td style="font-family:monospace;font-size:12px;color:var(--text);">${escapeHtml(item.redeem_code)}</td>
+            <td style="font-size:12px;">${escapeHtml(product ? product.name : '未知')}</td>
+            <td>${item.used ? '<span style="font-size:11px;color:var(--text3);">已用</span>' : '<span class="order-badge">可用</span>'}</td>
+            <td style="font-family:monospace;font-size:11px;color:var(--text3);">${escapeHtml(item.order_no || '-')}</td>
             <td><button onclick="deleteItem(${item.id})" style="font-size:11px;color:var(--red);background:none;border:none;cursor:pointer;">删除</button></td>
           </tr>`;
         }).join('')}
@@ -817,8 +997,8 @@ async function renderRedeemList() {
 }
 
 async function deleteItem(id) {
-  if (!confirm('确认删除这条记录？')) return;
-  await sbDelete('cards', {id});
+  if (!confirm('确认删除这条卡密记录？')) return;
+  await sbDelete('cards', {id}, adminToken);
   await renderRedeemList();
   await renderStockOverview();
 }
@@ -835,11 +1015,8 @@ function switchTab(tab) {
   });
 }
 
-// ============================================================
-// 后台子标签切换
-// ============================================================
 function adminSubTab(tab) {
-  ['stock','products','codes'].forEach(t => {
+  ['orders','stock','products','codes'].forEach(t => {
     const btn = document.getElementById('sub-' + t);
     const panel = document.getElementById('panel-' + t);
     if (btn) btn.classList.toggle('active', t === tab);
@@ -882,16 +1059,14 @@ async function saveNewProduct() {
   if (!price || price <= 0) { showNpResult('err', '请填写有效价格'); return; }
 
   showNpResult('ok', '保存中...');
-
   try {
     await sbInsert('products', [{
       cat, name, description, price, unit,
       badge, badge_class, hot, emoji,
       img: imgData || imgUrl || '',
       active: true
-    }]);
+    }], adminToken);
 
-    // 清空表单
     ['np-name','np-desc','np-price','np-img-url'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('np-unit').value = '张';
     document.getElementById('np-hot').checked = false;
@@ -907,7 +1082,8 @@ async function saveNewProduct() {
     renderProductManageList();
     await renderStockOverview();
   } catch(e) {
-    showNpResult('err', '保存失败，请重试');
+    console.error(e);
+    showNpResult('err', '保存失败，请确认已登录后台且管理员权限正确');
   }
 }
 
@@ -921,7 +1097,7 @@ function showNpResult(type, msg) {
 async function renderProductManageList() {
   const el = document.getElementById('product-manage-list');
   try {
-    const products = await sbFetch('products', 'order=created_at.asc');
+    const products = await sbFetch('products', 'order=created_at.asc', adminToken);
     if (!products || !products.length) {
       el.innerHTML = '<p style="font-size:13px;color:var(--text3);text-align:center;padding:1.5rem 0;">暂无商品，在上方添加</p>';
       return;
@@ -929,13 +1105,14 @@ async function renderProductManageList() {
     el.innerHTML = products.map(p => `
       <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">
         <div style="width:52px;height:36px;background:var(--cream2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;overflow:hidden;">
-          ${p.img ? `<img src="${p.img}" style="width:100%;height:100%;object-fit:cover;" />` : (p.emoji || '🍎')}
+          ${p.img ? `<img src="${escapeHtml(p.img)}" style="width:100%;height:100%;object-fit:cover;" />` : escapeHtml(p.emoji || '🍎')}
         </div>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</div>
-          <div style="font-size:12px;color:var(--text3);">¥${parseFloat(p.price).toFixed(2)} / ${p.unit} · ${p.cat==='giftcard'?'礼品卡':'AI订阅'}</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(p.name)}</div>
+          <div style="font-size:12px;color:var(--text3);">¥${parseFloat(p.price).toFixed(2)} / ${escapeHtml(p.unit || '件')} · ${p.cat==='giftcard'?'礼品卡':'AI订阅'} · ${p.active ? '上架中' : '已下架'}</div>
         </div>
-        <button onclick="deleteProduct(${p.id}, this.dataset.name)" data-name="${p.name}" style="font-size:11px;color:var(--red);background:var(--red-light);border:1px solid var(--red-border);border-radius:6px;padding:4px 10px;cursor:pointer;flex-shrink:0;">删除</button>
+        <button onclick="toggleProductActive(${p.id}, ${p.active ? 'false' : 'true'})" style="font-size:11px;color:var(--blue);background:var(--blue-light);border:1px solid #c3d7f0;border-radius:6px;padding:4px 10px;cursor:pointer;flex-shrink:0;">${p.active ? '下架' : '上架'}</button>
+        <button onclick="deleteProduct(${p.id}, this.dataset.name)" data-name="${escapeHtml(p.name)}" style="font-size:11px;color:var(--red);background:var(--red-light);border:1px solid var(--red-border);border-radius:6px;padding:4px 10px;cursor:pointer;flex-shrink:0;">删除</button>
       </div>
     `).join('') + `<p style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center;">共 ${products.length} 个商品</p>`;
   } catch(e) {
@@ -943,20 +1120,37 @@ async function renderProductManageList() {
   }
 }
 
-async function deleteProduct(id, name) {
-  if (!confirm(`确认删除商品「${name}」？`)) return;
-  await sbDelete('products', {id});
-  showNpResult('ok', `已删除商品「${name}」`);
+async function toggleProductActive(id, active) {
+  await sbUpdate('products', {id}, {active}, adminToken);
   await loadProducts();
-  renderProductSelect();
   renderProductManageList();
-  await renderStockOverview();
 }
 
-// 检查URL是否直接跳转到兑换页
-if (window.location.hash === '#redeem') {
-  switchTab('redeem');
+async function deleteProduct(id, name) {
+  if (!confirm(`确认删除商品「${name}」？如果已有订单/卡密关联，数据库可能会拒绝删除，建议先下架。`)) return;
+  try {
+    await sbDelete('products', {id}, adminToken);
+    showNpResult('ok', `已删除商品「${name}」`);
+    await loadProducts();
+    renderProductSelect();
+    renderProductManageList();
+    await renderStockOverview();
+  } catch(e) {
+    showNpResult('err', '删除失败：可能已有订单或卡密关联。建议改为下架。');
+  }
 }
+
+// ============================================================
+// 初始化
+// ============================================================
+if (window.location.hash === '#admin') {
+  showAdminEntry();
+  switchTab('admin');
+}
+if (adminToken) {
+  showAdminEntry();
+}
+
 </script>
 </body>
 </html>
