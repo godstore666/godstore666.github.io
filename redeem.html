@@ -518,7 +518,15 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
 // ============================================================
 // 配置
 // ============================================================
-const ADMIN_PASSWORD = 'a816917a';
+// 密码用SHA256哈希存储，防止F12泄露明文
+const ADMIN_PASSWORD_HASH = '1bd127e412c9fa9bc7aa263421367fffea3852b6147690a07b5071e3cfe4676c';
+
+async function hashPassword(pwd) {
+  const msgBuffer = new TextEncoder().encode(pwd);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 const SUPABASE_URL = 'https://ffqlpckpjqgileyoummq.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_qRDJLqklLu8F5UzEAsEGqw_88m5p3WS';
 
@@ -587,17 +595,29 @@ function genRedeemCode() {
 // ============================================================
 // 兑换逻辑
 // ============================================================
+// 限流：记录兑换失败次数，防止暴力破解
+const REDEEM_LIMIT = { count: 0, lockUntil: 0 };
+
 async function doRedeem() {
   const code = document.getElementById('redeem-code').value.trim();
   const btn = document.getElementById('redeem-btn');
   document.getElementById('redeem-success').style.display = 'none';
   document.getElementById('redeem-error').style.display = 'none';
 
-  // 暗码：输入 a816917a 显示后台管理入口
-  if (code === 'a816917a') {
+  // 暗码：哈希比对，防止F12看到明文
+  const codeHash = await hashPassword(code);
+  if (codeHash === ADMIN_PASSWORD_HASH) {
     document.getElementById('admin-tab').style.display = '';
     document.getElementById('redeem-code').value = '';
     switchTab('admin');
+    return;
+  }
+
+  // 限流检查：失败5次锁定10分钟
+  const now = Date.now();
+  if (REDEEM_LIMIT.lockUntil > now) {
+    const mins = Math.ceil((REDEEM_LIMIT.lockUntil - now) / 60000);
+    showRedeemError(`操作过于频繁，请 ${mins} 分钟后再试`);
     return;
   }
 
@@ -610,14 +630,23 @@ async function doRedeem() {
   try {
     const rows = await sbFetch('cards', `redeem_code=eq.${upperCode}`);
     if (!rows || rows.length === 0) {
-      showRedeemError('兑换码无效，请检查是否输入正确');
+      REDEEM_LIMIT.count++;
+      if (REDEEM_LIMIT.count >= 5) {
+        REDEEM_LIMIT.lockUntil = Date.now() + 10 * 60 * 1000;
+        REDEEM_LIMIT.count = 0;
+        showRedeemError('失败次数过多，已锁定10分钟，请检查兑换码是否正确');
+      } else {
+        showRedeemError(`兑换码无效，还可尝试 ${5 - REDEEM_LIMIT.count} 次`);
+      }
     } else if (rows[0].used) {
+      REDEEM_LIMIT.count++;
       showRedeemError('该兑换码已被使用，每个兑换码只能使用一次');
     } else {
       await sbUpdate('cards', {id: rows[0].id}, {
         used: true,
         used_at: new Date().toISOString()
       });
+      REDEEM_LIMIT.count = 0; // 成功后重置失败计数
       document.getElementById('card-code-display').textContent = rows[0].card_code;
       document.getElementById('redeem-success').style.display = 'block';
     }
@@ -648,9 +677,10 @@ function copyCode() {
 // ============================================================
 let adminLoggedIn = false;
 
-function adminLogin() {
+async function adminLogin() {
   const pwd = document.getElementById('admin-pwd').value;
-  if (pwd === ADMIN_PASSWORD) {
+  const pwdHash = await hashPassword(pwd);
+  if (pwdHash === ADMIN_PASSWORD_HASH) {
     adminLoggedIn = true;
     document.getElementById('admin-login').style.display = 'none';
     document.getElementById('admin-panel').style.display = 'block';

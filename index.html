@@ -466,8 +466,9 @@ footer {
       <div>金额：<span id="pay-total-amount" style="color:var(--accent);font-weight:600;"></span></div>
       <div>联系方式：<span id="pay-contact-val" style="color:var(--text);"></span></div>
     </div>
-    <div style="background:var(--accent-light);border:1px solid var(--accent-border);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:#7a5010;margin-bottom:1.25rem;">
-      💡 付款时请在备注中填写你的联系方式，方便客服确认订单
+    <div style="background:var(--accent-light);border:1px solid var(--accent-border);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:#7a5010;margin-bottom:1.25rem;line-height:1.8;">
+      💡 付款时请在备注中填写以下<strong>订单号</strong>，方便核对：<br>
+      <span id="pay-order-id" style="font-family:monospace;font-size:14px;font-weight:700;letter-spacing:0.05em;color:#5a3800;"></span>
     </div>
     <button class="pay-btn" onclick="confirmPaid()">我已完成付款 →</button>
     <div class="modal-foot">付款完成后点击上方按钮，将显示发货方式</div>
@@ -673,14 +674,27 @@ function closeModalOut(e) { if (e.target.id==='modal') closeModal(); }
 function changeQty(d) { qty=Math.max(1,Math.min(99,qty+d)); document.getElementById('m-qty').textContent=qty; updateTotal(); }
 function updateTotal() { document.getElementById('m-total').textContent='¥'+(cur.price*qty).toFixed(2); }
 
+function genOrderId() {
+  const now = new Date();
+  const date = now.getFullYear().toString().slice(2) +
+    String(now.getMonth()+1).padStart(2,'0') +
+    String(now.getDate()).padStart(2,'0');
+  const rand = Math.random().toString(36).slice(2,6).toUpperCase();
+  return `PLO-${date}-${rand}`;
+}
+
 function doPay() {
   const contact = document.getElementById('m-contact').value.trim();
   if (!contact) { alert('请填写联系方式，方便客服联系你发货 😊'); return; }
   closeModal();
+  // 生成唯一订单号
+  const orderId = genOrderId();
+  window._currentOrderId = orderId;
   // 显示收款码弹窗
   document.getElementById('pay-product-name').textContent = cur.name;
   document.getElementById('pay-total-amount').textContent = '¥' + (cur.price * qty).toFixed(2);
   document.getElementById('pay-contact-val').textContent = contact;
+  document.getElementById('pay-order-id').textContent = orderId;
   window._pendingContact = contact;
   window._pendingCat = cur.cat;
   document.getElementById('pay-modal').classList.add('open');
@@ -690,8 +704,9 @@ function confirmPaid() {
   document.getElementById('pay-modal').classList.remove('open');
   const contact = window._pendingContact || '';
   const cat = window._pendingCat || '';
+  const orderId = window._currentOrderId || '-';
   document.getElementById('s-summary').innerHTML =
-    `商品：${cur.name}<br>数量：${qty} ${cur.unit}<br>金额：¥${(cur.price*qty).toFixed(2)}<br>联系方式：${contact}`;
+    `订单号：<strong>${orderId}</strong><br>商品：${cur.name}<br>数量：${qty} ${cur.unit}<br>金额：¥${(cur.price*qty).toFixed(2)}<br>联系方式：${contact}`;
   // 根据分类显示不同发货提示
   if (cat === 'giftcard') {
     document.getElementById('delivery-qq-section').style.display = 'none';
