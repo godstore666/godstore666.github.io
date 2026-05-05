@@ -702,8 +702,8 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
 
         <!-- 添加商品 -->
         <div class="card fade-up" style="margin-bottom:1.25rem;">
-          <div class="card-title">➕ 添加商品</div>
-          <p class="card-sub">填写商品信息，保存后立即显示在商城</p>
+          <div class="card-title" id="product-form-title">➕ 添加商品</div>
+          <p class="card-sub" id="product-form-sub">填写商品信息，保存后立即显示在商城。已上架商品可在下方点「编辑」直接修改参数。</p>
 
           <div class="form-group">
             <label class="form-label">商品名称</label>
@@ -774,14 +774,15 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
             <input class="form-input" id="np-emoji" type="text" placeholder="🍎" maxlength="4" style="font-size:20px;width:80px;" value="🍎" />
           </div>
 
-          <button class="submit-btn" onclick="saveNewProduct()">保存商品 →</button>
+          <button class="submit-btn" id="product-save-btn" onclick="saveNewProduct()">保存商品 →</button>
+          <button class="close-btn" id="product-cancel-edit-btn" onclick="cancelEditProduct()" style="display:none;margin-top:10px;">取消编辑</button>
           <div class="add-result" id="np-result"></div>
         </div>
 
         <!-- 商品列表 -->
         <div class="card fade-up">
           <div class="card-title">📋 已有商品</div>
-          <p class="card-sub">管理商城中显示的商品，可删除或调整顺序</p>
+          <p class="card-sub">管理商城中显示的商品，可编辑参数、上下架、切换缺货状态。已有订单/卡密关联的商品建议下架，不建议删除。</p>
           <div id="product-manage-list"></div>
         </div>
           </div>
@@ -840,6 +841,7 @@ const SUPABASE_KEY = 'sb_publishable_qRDJLqklLu8F5UzEAsEGqw_88m5p3WS';
 const ADMIN_OPEN_CODE_HASH = 'dd5e0e8fa79b9f21271a20fac5f9501d5df184cd9c3f8172a26b362d1b74e60d';
 
 let PRODUCTS = [];
+let EDITING_PRODUCT_ID = null;
 const DEFAULT_CATEGORIES = [
   { id: 'giftcard', name: '苹果礼品卡', emoji: '🍎', subtitle: '正规 · 正品', active: true, sort_order: 1 },
   { id: 'ai', name: 'AI 订阅', emoji: '🤖', subtitle: 'ChatGPT · Claude · Gemini', active: true, sort_order: 2 }
@@ -2090,6 +2092,104 @@ async function deleteCategory(id) {
 // ============================================================
 // 商品管理
 // ============================================================
+function setProductFormMode(mode, productName = '') {
+  const isEdit = mode === 'edit';
+  const title = document.getElementById('product-form-title');
+  const sub = document.getElementById('product-form-sub');
+  const saveBtn = document.getElementById('product-save-btn');
+  const cancelBtn = document.getElementById('product-cancel-edit-btn');
+  if (title) title.textContent = isEdit ? '✏️ 编辑商品' : '➕ 添加商品';
+  if (sub) sub.textContent = isEdit
+    ? `正在编辑「${productName}」。保存后商城会立即更新。`
+    : '填写商品信息，保存后立即显示在商城。已上架商品可在下方点「编辑」直接修改参数。';
+  if (saveBtn) saveBtn.textContent = isEdit ? '保存修改 →' : '保存商品 →';
+  if (cancelBtn) cancelBtn.style.display = isEdit ? 'block' : 'none';
+}
+
+function setSelectValue(selectId, value, label = '') {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const strValue = String(value ?? '');
+  if (strValue && !Array.from(sel.options).some(opt => opt.value === strValue)) {
+    const opt = document.createElement('option');
+    opt.value = strValue;
+    opt.textContent = label || strValue;
+    sel.appendChild(opt);
+  }
+  sel.value = strValue;
+}
+
+function clearProductForm(keepMessage = false) {
+  ['np-name','np-desc','np-price','np-img-url'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const unit = document.getElementById('np-unit'); if (unit) unit.value = '张';
+  const hot = document.getElementById('np-hot'); if (hot) hot.checked = false;
+  const st = document.getElementById('np-stock-status'); if (st) st.value = 'in_stock';
+  const emoji = document.getElementById('np-emoji'); if (emoji) emoji.value = '🍎';
+  const preview = document.getElementById('np-img-preview'); if (preview) preview.style.display = 'none';
+  const placeholder = document.getElementById('np-img-placeholder'); if (placeholder) placeholder.style.display = '';
+  const tag = document.getElementById('np-img-tag'); if (tag) tag.removeAttribute('src');
+  const input = document.getElementById('np-img-input'); if (input) input.value = '';
+  window._pendingImgData = '';
+  EDITING_PRODUCT_ID = null;
+  setProductFormMode('add');
+  if (!keepMessage) {
+    const res = document.getElementById('np-result');
+    if (res) res.style.display = 'none';
+  }
+}
+
+function cancelEditProduct() {
+  clearProductForm();
+  showNpResult('ok', '已取消编辑，当前为添加新商品模式。');
+}
+
+async function startEditProduct(id) {
+  try {
+    const product = (await sbFetch('products', `id=eq.${encodeURIComponent(id)}&limit=1`, adminToken))[0];
+    if (!product) return alert('未找到这个商品，可能已被删除。');
+    EDITING_PRODUCT_ID = product.id;
+    document.getElementById('np-name').value = product.name || '';
+    document.getElementById('np-desc').value = product.description || '';
+    document.getElementById('np-price').value = product.price ?? '';
+    document.getElementById('np-unit').value = product.unit || '张';
+    setSelectValue('np-cat', product.cat || 'giftcard', getCategoryName(product.cat || 'giftcard'));
+    setSelectValue('np-stock-status', product.stock_status || 'in_stock');
+    setSelectValue('np-badge', `${product.badge || '商品'}|${product.badge_class || 'cb-gold'}`, `${product.badge || '商品'}（当前）`);
+    document.getElementById('np-hot').checked = !!product.hot;
+    document.getElementById('np-emoji').value = product.emoji || '🍎';
+    document.getElementById('np-img-input').value = '';
+    window._pendingImgData = '';
+
+    const img = product.img || '';
+    const imgUrl = document.getElementById('np-img-url');
+    const tag = document.getElementById('np-img-tag');
+    const preview = document.getElementById('np-img-preview');
+    const placeholder = document.getElementById('np-img-placeholder');
+    if (img) {
+      if (tag) tag.src = img;
+      if (preview) preview.style.display = 'block';
+      if (placeholder) placeholder.style.display = 'none';
+      if (imgUrl) imgUrl.value = img.startsWith('data:image') ? '' : img;
+      if (img.startsWith('data:image')) window._pendingImgData = img;
+    } else {
+      if (tag) tag.removeAttribute('src');
+      if (preview) preview.style.display = 'none';
+      if (placeholder) placeholder.style.display = '';
+      if (imgUrl) imgUrl.value = '';
+    }
+
+    setProductFormMode('edit', product.name || '未命名商品');
+    showNpResult('ok', `正在编辑「${product.name || '未命名商品'}」，修改后点“保存修改”。`);
+    document.getElementById('product-form-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch(e) {
+    console.error(e);
+    alert('读取商品失败，请确认管理员权限正常。');
+  }
+}
+
 async function saveNewProduct() {
   const name = document.getElementById('np-name').value.trim();
   const description = document.getElementById('np-desc').value.trim();
@@ -2106,41 +2206,40 @@ async function saveNewProduct() {
 
   if (!name) { showNpResult('err', '请填写商品名称'); return; }
   if (!price || price <= 0) { showNpResult('err', '请填写有效价格'); return; }
+  if (!cat) { showNpResult('err', '请选择商品分类'); return; }
 
-  showNpResult('ok', '保存中...');
+  const payload = {
+    cat, name, description, price, unit,
+    badge, badge_class, hot, emoji,
+    img: imgData || imgUrl || '',
+    stock_status
+  };
+
+  showNpResult('ok', EDITING_PRODUCT_ID ? '正在保存修改...' : '保存中...');
   try {
-    await sbInsert('products', [{
-      cat, name, description, price, unit,
-      badge, badge_class, hot, emoji,
-      img: imgData || imgUrl || '',
-      active: true,
-      stock_status
-    }], adminToken);
+    if (EDITING_PRODUCT_ID) {
+      await sbUpdate('products', { id: EDITING_PRODUCT_ID }, payload, adminToken);
+      showNpResult('ok', `✅ 商品「${name}」已修改，刷新商城即可看到最新信息。`);
+    } else {
+      await sbInsert('products', [{ ...payload, active: true }], adminToken);
+      showNpResult('ok', `✅ 商品「${name}」已保存！刷新商城即可看到。`);
+    }
 
-    ['np-name','np-desc','np-price','np-img-url'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('np-unit').value = '张';
-    document.getElementById('np-hot').checked = false;
-    const st = document.getElementById('np-stock-status'); if (st) st.value = 'in_stock';
-    document.getElementById('np-emoji').value = '🍎';
-    document.getElementById('np-img-preview').style.display = 'none';
-    document.getElementById('np-img-placeholder').style.display = '';
-    document.getElementById('np-img-input').value = '';
-    window._pendingImgData = '';
-
-    showNpResult('ok', `✅ 商品「${name}」已保存！刷新商城即可看到`);
+    clearProductForm(true);
     await loadProducts();
     renderProductSelect();
     renderCategorySelect();
-    renderProductManageList();
+    await renderProductManageList();
     await renderStockOverview();
   } catch(e) {
     console.error(e);
-    showNpResult('err', '保存失败，请确认已登录后台且管理员权限正确');
+    showNpResult('err', EDITING_PRODUCT_ID ? '修改失败，请确认管理员权限正确' : '保存失败，请确认已登录后台且管理员权限正确');
   }
 }
 
 function showNpResult(type, msg) {
   const el = document.getElementById('np-result');
+  if (!el) return;
   el.className = 'add-result ' + type;
   el.textContent = msg;
   el.style.display = 'block';
@@ -2163,28 +2262,51 @@ async function renderProductManageList() {
           <div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(p.name)}</div>
           <div style="font-size:12px;color:var(--text3);">¥${parseFloat(p.price).toFixed(2)} / ${escapeHtml(p.unit || '件')} · ${escapeHtml(getCategoryName(p.cat))} · ${productStatusText(p)}</div>
         </div>
-        <button class="mini-btn blue" onclick="toggleProductActive(${p.id}, ${p.active ? 'false' : 'true'})">${p.active ? '下架' : '上架'}</button>
-        <button class="mini-btn gold" onclick="toggleProductStockStatus(${p.id}, '${p.stock_status === 'out_of_stock' ? 'in_stock' : 'out_of_stock'}')">${p.stock_status === 'out_of_stock' ? '标为有货' : '标为缺货'}</button>
-        <button class="mini-btn red" onclick="deleteProduct(${p.id}, this.dataset.name)" data-name="${escapeHtml(p.name)}">删除</button>
+        <button class="mini-btn" type="button" data-product-action="edit" data-id="${p.id}">编辑</button>
+        <button class="mini-btn blue" type="button" data-product-action="toggle-active" data-id="${p.id}" data-active="${p.active ? 'false' : 'true'}">${p.active ? '下架' : '上架'}</button>
+        <button class="mini-btn gold" type="button" data-product-action="toggle-stock" data-id="${p.id}" data-stock="${p.stock_status === 'out_of_stock' ? 'in_stock' : 'out_of_stock'}">${p.stock_status === 'out_of_stock' ? '标为有货' : '标为缺货'}</button>
+        <button class="mini-btn red" type="button" data-product-action="delete" data-id="${p.id}" data-name="${escapeHtml(p.name)}">删除</button>
       </div>
     `).join('') + `<p style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center;">共 ${products.length} 个商品</p>`;
   } catch(e) {
+    console.error(e);
     el.innerHTML = '<p style="font-size:13px;color:var(--red);text-align:center;padding:1rem;">加载失败</p>';
   }
+}
+
+function bindProductActionDelegation() {
+  const list = document.getElementById('product-manage-list');
+  if (!list || list.dataset.bound) return;
+  list.dataset.bound = '1';
+  list.addEventListener('click', async (event) => {
+    const btn = event.target.closest('[data-product-action]');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const action = btn.dataset.productAction;
+    try {
+      if (action === 'edit') return startEditProduct(id);
+      if (action === 'toggle-active') return toggleProductActive(id, btn.dataset.active === 'true');
+      if (action === 'toggle-stock') return toggleProductStockStatus(id, btn.dataset.stock);
+      if (action === 'delete') return deleteProduct(id, btn.dataset.name || '未命名商品');
+    } catch(e) {
+      console.error(e);
+      alert('商品操作失败：' + (e.message || e));
+    }
+  });
 }
 
 async function toggleProductActive(id, active) {
   await sbUpdate('products', {id}, {active}, adminToken);
   await loadProducts();
   renderProductSelect();
-  renderProductManageList();
+  await renderProductManageList();
   await renderStockOverview();
 }
 
 async function toggleProductStockStatus(id, stock_status) {
   await sbUpdate('products', {id}, {stock_status}, adminToken);
   await loadProducts();
-  renderProductManageList();
+  await renderProductManageList();
   await renderStockOverview();
 }
 
@@ -2192,13 +2314,15 @@ async function deleteProduct(id, name) {
   if (!confirm(`确认删除商品「${name}」？如果已有订单/卡密关联，数据库可能会拒绝删除，建议先下架。`)) return;
   try {
     await sbDelete('products', {id}, adminToken);
+    if (String(EDITING_PRODUCT_ID) === String(id)) clearProductForm();
     showNpResult('ok', `已删除商品「${name}」`);
     await loadProducts();
     renderProductSelect();
     renderCategorySelect();
-    renderProductManageList();
+    await renderProductManageList();
     await renderStockOverview();
   } catch(e) {
+    console.error(e);
     showNpResult('err', '删除失败：可能已有订单或卡密关联。建议改为下架。');
   }
 }
@@ -2208,6 +2332,7 @@ async function deleteProduct(id, name) {
 // ============================================================
 bindOrderActionDelegation();
 bindStockAndCodeDelegation();
+bindProductActionDelegation();
 if (window.location.hash === '#admin') {
   showAdminEntry();
   switchTab('admin');
