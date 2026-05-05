@@ -585,6 +585,8 @@ let CATEGORIES = [...DEFAULT_CATEGORIES];
 // ============================================================
 const CONFIG = {
   announcement: '欢迎光临菠萝小铺！本店主营苹果礼品卡及 ChatGPT、Claude、Gemini 等 AI 订阅代充。有任何问题欢迎联系客服。付款时请务必备注订单号，提卡加 QQ 群 2158072705。',
+  announcement_color: '#7a5010',
+  announcement_font_size: '14',
   qq_group: '2158072705',
   response_time: '10 分钟内',
   note: '工作时间 9:00–23:00，节假日可能稍有延迟，感谢理解'
@@ -603,13 +605,35 @@ function escapeHtml(str = '') {
 
 async function loadShopSettingsFromSupabase() {
   try {
-    const rows = await sbFetch('shop_settings', 'key=in.(announcement)');
+    const rows = await sbFetch('shop_settings', 'key=in.(announcement,announcement_color,announcement_font_size)');
     (rows || []).forEach(r => {
       if (r.key === 'announcement' && r.value) CONFIG.announcement = r.value;
+      if (r.key === 'announcement_color' && r.value) CONFIG.announcement_color = normalizeColor(r.value, '#7a5010');
+      if (r.key === 'announcement_font_size' && r.value) CONFIG.announcement_font_size = normalizeFontSize(r.value, '14');
     });
   } catch(e) {
     console.warn('shop_settings 表未配置，使用默认公告', e);
   }
+}
+
+function normalizeColor(value, fallback = '#7a5010') {
+  const v = String(value || '').trim();
+  return /^#[0-9a-fA-F]{6}$/.test(v) ? v : fallback;
+}
+
+function normalizeFontSize(value, fallback = '14') {
+  const n = parseInt(String(value || '').replace('px',''), 10);
+  if (!Number.isFinite(n)) return fallback;
+  return String(Math.max(12, Math.min(24, n)));
+}
+
+function applyAnnouncementStyle() {
+  const color = normalizeColor(CONFIG.announcement_color, '#7a5010');
+  const size = normalizeFontSize(CONFIG.announcement_font_size, '14') + 'px';
+  const topText = document.getElementById('announcement-text');
+  const noticeBody = document.getElementById('notice-body');
+  if (topText) { topText.style.color = color; topText.style.fontSize = size; }
+  if (noticeBody) { noticeBody.style.color = color; noticeBody.style.fontSize = size; }
 }
 
 function startNotice() {
@@ -618,6 +642,7 @@ function startNotice() {
     return;
   }
   document.getElementById('notice-body').textContent = CONFIG.announcement;
+  applyAnnouncementStyle();
   let sec = 3;
   const btn = document.getElementById('notice-btn');
   const cd = document.getElementById('notice-countdown');
@@ -729,6 +754,7 @@ async function init() {
   await loadShopSettingsFromSupabase();
   startNotice();
   document.getElementById('announcement-text').textContent = CONFIG.announcement;
+  applyAnnouncementStyle();
   document.getElementById('s-qq').textContent = CONFIG.qq_group;
   document.getElementById('s-qq2').textContent = CONFIG.qq_group;
   document.getElementById('s-time').textContent = CONFIG.response_time;

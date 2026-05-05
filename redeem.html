@@ -666,6 +666,27 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
           <label class="form-label">首页公告内容</label>
           <textarea class="settings-textarea" id="setting-announcement" placeholder="请输入公告内容，可换行"></textarea>
         </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-group">
+            <label class="form-label">公告文字颜色</label>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <input class="form-input" id="setting-announcement-color" type="color" value="#7a5010" style="height:42px;padding:4px;width:72px;cursor:pointer;" />
+              <input class="form-input" id="setting-announcement-color-text" type="text" value="#7a5010" placeholder="#7a5010" style="margin-bottom:0;" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">公告文字大小</label>
+            <select class="product-select" id="setting-announcement-size">
+              <option value="12">12px 偏小</option>
+              <option value="13">13px 默认顶部</option>
+              <option value="14">14px 默认弹窗</option>
+              <option value="15">15px 清晰</option>
+              <option value="16">16px 醒目</option>
+              <option value="18">18px 大号</option>
+            </select>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin:-4px 0 14px;line-height:1.7;">颜色和大小会同步影响首页顶部公告、进入网站弹窗公告正文。</div>
         <button class="submit-btn" onclick="saveShopSettings()">保存公告 →</button>
         <div class="add-result" id="settings-result"></div>
       </div>
@@ -683,7 +704,7 @@ const SUPABASE_KEY = 'sb_publishable_qRDJLqklLu8F5UzEAsEGqw_88m5p3WS';
 
 // 这个暗码只负责“显示后台登录入口”，不再负责真正登录。
 // 真正后台权限由 Supabase Auth + RLS 控制。
-const ADMIN_OPEN_CODE_HASH = '1bd127e412c9fa9bc7aa263421367fffea3852b6147690a07b5071e3cfe4676c';
+const ADMIN_OPEN_CODE_HASH = 'dd5e0e8fa79b9f21271a20fac5f9501d5df184cd9c3f8172a26b362d1b74e60d';
 
 let PRODUCTS = [];
 const DEFAULT_CATEGORIES = [
@@ -694,7 +715,7 @@ let CATEGORIES = [...DEFAULT_CATEGORIES];
 let adminToken = localStorage.getItem('bp_admin_token') || '';
 let adminLoggedIn = false;
 const DEFAULT_ANNOUNCEMENT = '欢迎光临菠萝小铺！本店主营苹果礼品卡及 ChatGPT、Claude、Gemini 等 AI 订阅代充。有任何问题欢迎联系客服。付款时请务必备注订单号，提卡加 QQ 群 2158072705。';
-let SHOP_SETTINGS = { announcement: DEFAULT_ANNOUNCEMENT };
+let SHOP_SETTINGS = { announcement: DEFAULT_ANNOUNCEMENT, announcement_color: '#7a5010', announcement_font_size: '14' };
 
 // ============================================================
 // 通用工具
@@ -961,6 +982,7 @@ async function renderAdminPanel() {
   try {
     await loadShopSettings();
     renderShopSettingsForm();
+    bindSettingsControls();
     await loadCategories();
     await loadProducts();
     renderProductSelect();
@@ -985,9 +1007,11 @@ async function renderAdminPanel() {
 // ============================================================
 async function loadShopSettings() {
   try {
-    const rows = await sbFetch('shop_settings', 'key=in.(announcement)', adminToken);
+    const rows = await sbFetch('shop_settings', 'key=in.(announcement,announcement_color,announcement_font_size)', adminToken);
     (rows || []).forEach(r => {
       if (r.key === 'announcement') SHOP_SETTINGS.announcement = r.value || DEFAULT_ANNOUNCEMENT;
+      if (r.key === 'announcement_color') SHOP_SETTINGS.announcement_color = normalizeColor(r.value, '#7a5010');
+      if (r.key === 'announcement_font_size') SHOP_SETTINGS.announcement_font_size = normalizeFontSize(r.value, '14');
     });
   } catch(e) {
     console.warn('shop_settings 表未配置，使用默认公告', e);
@@ -995,9 +1019,43 @@ async function loadShopSettings() {
   }
 }
 
+function normalizeColor(value, fallback = '#7a5010') {
+  const v = String(value || '').trim();
+  return /^#[0-9a-fA-F]{6}$/.test(v) ? v : fallback;
+}
+
+function normalizeFontSize(value, fallback = '14') {
+  const n = parseInt(String(value || '').replace('px',''), 10);
+  if (!Number.isFinite(n)) return fallback;
+  return String(Math.max(12, Math.min(24, n)));
+}
+
 function renderShopSettingsForm() {
   const el = document.getElementById('setting-announcement');
   if (el) el.value = SHOP_SETTINGS.announcement || DEFAULT_ANNOUNCEMENT;
+
+  const color = normalizeColor(SHOP_SETTINGS.announcement_color, '#7a5010');
+  const colorInput = document.getElementById('setting-announcement-color');
+  const colorText = document.getElementById('setting-announcement-color-text');
+  if (colorInput) colorInput.value = color;
+  if (colorText) colorText.value = color;
+
+  const size = normalizeFontSize(SHOP_SETTINGS.announcement_font_size, '14');
+  const sizeSelect = document.getElementById('setting-announcement-size');
+  if (sizeSelect) sizeSelect.value = size;
+}
+
+function bindSettingsControls() {
+  const colorInput = document.getElementById('setting-announcement-color');
+  const colorText = document.getElementById('setting-announcement-color-text');
+  if (colorInput && colorText && !colorInput.dataset.bound) {
+    colorInput.dataset.bound = '1';
+    colorText.dataset.bound = '1';
+    colorInput.addEventListener('input', () => { colorText.value = colorInput.value; });
+    colorText.addEventListener('input', () => {
+      if (/^#[0-9a-fA-F]{6}$/.test(colorText.value.trim())) colorInput.value = colorText.value.trim();
+    });
+  }
 }
 
 function showSettingsResult(type, msg) {
@@ -1010,14 +1068,24 @@ function showSettingsResult(type, msg) {
 
 async function saveShopSettings() {
   const announcement = (document.getElementById('setting-announcement')?.value || '').trim();
+  const color = normalizeColor(document.getElementById('setting-announcement-color-text')?.value || document.getElementById('setting-announcement-color')?.value, '#7a5010');
+  const size = normalizeFontSize(document.getElementById('setting-announcement-size')?.value, '14');
   if (!announcement) return showSettingsResult('err', '公告内容不能为空');
   try {
-    await sbUpsert('shop_settings', [{ key: 'announcement', value: announcement, updated_at: new Date().toISOString() }], 'key', adminToken);
+    const now = new Date().toISOString();
+    await sbUpsert('shop_settings', [
+      { key: 'announcement', value: announcement, updated_at: now },
+      { key: 'announcement_color', value: color, updated_at: now },
+      { key: 'announcement_font_size', value: size, updated_at: now }
+    ], 'key', adminToken);
     SHOP_SETTINGS.announcement = announcement;
-    showSettingsResult('ok', '✅ 公告已保存。刷新首页后会显示最新公告。');
+    SHOP_SETTINGS.announcement_color = color;
+    SHOP_SETTINGS.announcement_font_size = size;
+    renderShopSettingsForm();
+    showSettingsResult('ok', `✅ 公告已保存。颜色 ${color}，字号 ${size}px。刷新首页后会显示最新公告。`);
   } catch(e) {
     console.error(e);
-    showSettingsResult('err', '保存失败：请先执行 V7 的 shop_settings SQL，或检查管理员权限。');
+    showSettingsResult('err', '保存失败：请先执行 V7/V7.2 的 shop_settings SQL，或检查管理员权限。');
   }
 }
 
