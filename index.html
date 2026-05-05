@@ -526,57 +526,8 @@ async function sbFetch(table, params = '') {
   return res.json();
 }
 
-// 默认内置商品（Supabase加载失败时的备用）
-const PRODUCTS = [
-  {
-    id: 1, cat: 'giftcard',
-    name: '苹果礼品卡 50 TL',
-    desc: '土耳其区 App Store 礼品卡，面值 50 里拉。可用于购买应用、游戏内购、订阅等。付款后人工发送卡码。',
-    price: 18.00, unit: '张',
-    badge: '礼品卡', badgeClass: 'cb-gold',
-    emoji: '🍎', hot: false, priceNote: '/ 张，含服务费'
-  },
-  {
-    id: 2, cat: 'giftcard',
-    name: '苹果礼品卡 100 TL',
-    desc: '土耳其区 App Store 礼品卡，面值 100 里拉，性价比最高，推荐购买。付款后人工发送卡码。',
-    price: 34.00, unit: '张',
-    badge: '热销', badgeClass: 'cb-green',
-    emoji: '🍎', hot: true, priceNote: '/ 张，含服务费'
-  },
-  {
-    id: 3, cat: 'giftcard',
-    name: '苹果礼品卡 250 TL',
-    desc: '土耳其区 App Store 礼品卡，面值 250 里拉，大额更优惠。付款后人工发送卡码。',
-    price: 78.00, unit: '张',
-    badge: '礼品卡', badgeClass: 'cb-gold',
-    emoji: '🍎', hot: false, priceNote: '/ 张，含服务费'
-  },
-  {
-    id: 4, cat: 'ai',
-    name: 'ChatGPT Plus 代充',
-    desc: '充值你的 ChatGPT 账号，升级 Plus 享受 GPT-4o 等高级功能。需提供账号，安全操作，隐私保障。',
-    price: 158.00, unit: '月',
-    badge: 'AI订阅', badgeClass: 'cb-blue',
-    emoji: '🤖', hot: true, priceNote: '/ 月，官方原价约 $20'
-  },
-  {
-    id: 5, cat: 'ai',
-    name: 'Claude Pro 代充',
-    desc: '充值你的 Claude 账号，升级 Pro 享受更高使用额度与优先访问权限。需提供账号，安全操作。',
-    price: 158.00, unit: '月',
-    badge: 'AI订阅', badgeClass: 'cb-blue',
-    emoji: '🧠', hot: false, priceNote: '/ 月，官方原价约 $20'
-  },
-  {
-    id: 6, cat: 'ai',
-    name: 'Gemini Advanced 代充',
-    desc: '充值你的 Google 账号，升级 Gemini Advanced 享受最强 Gemini 模型体验。需提供账号。',
-    price: 158.00, unit: '月',
-    badge: 'AI订阅', badgeClass: 'cb-blue',
-    emoji: '💎', hot: false, priceNote: '/ 月，官方原价约 $20'
-  },
-];
+// 商品全部从 Supabase 加载，无内置商品
+const PRODUCTS = [];
 
 // ============================================================
 // 🍍 店铺配置 — 改成你自己的信息
