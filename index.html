@@ -510,8 +510,22 @@ footer {
 
 <script>
 // ============================================================
-// 🍍 商品配置 — 在这里修改你的商品
+// Supabase 配置
 // ============================================================
+const SUPABASE_URL = 'https://ffqlpckpjqgileyoummq.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_qRDJLqklLu8F5UzEAsEGqw_88m5p3WS';
+
+async function sbFetch(table, params = '') {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY
+    }
+  });
+  return res.json();
+}
+
+// 默认内置商品（Supabase加载失败时的备用）
 const PRODUCTS = [
   {
     id: 1, cat: 'giftcard',
@@ -601,21 +615,50 @@ function closeNotice() {
   document.getElementById('notice-overlay').classList.remove('open');
 }
 
-function loadCustomProducts() {
-  try { return JSON.parse(localStorage.getItem('pineapple_products') || '[]'); } catch { return []; }
+let ALL_PRODUCTS = [...PRODUCTS];
+
+function getAllProducts() { return ALL_PRODUCTS; }
+
+async function loadProductsFromSupabase() {
+  try {
+    const data = await sbFetch('products', 'active=eq.true&order=created_at.asc');
+    if (Array.isArray(data) && data.length > 0) {
+      ALL_PRODUCTS = data.map(p => ({
+        id: p.id,
+        cat: p.cat,
+        name: p.name,
+        desc: p.description || '',
+        price: parseFloat(p.price),
+        unit: p.unit || '张',
+        badge: p.badge || '商品',
+        badgeClass: p.badge_class || 'cb-gold',
+        emoji: p.emoji || '🍎',
+        hot: p.hot || false,
+        img: p.img || '',
+        priceNote: '/ ' + (p.unit || '张')
+      }));
+    }
+  } catch(e) {
+    console.log('Supabase加载失败，使用内置商品', e);
+  }
 }
 
-function getAllProducts() {
-  return [...PRODUCTS, ...loadCustomProducts()];
-}
-
-function init() {
+async function init() {
   startNotice();
   document.getElementById('announcement-text').textContent = CONFIG.announcement;
   document.getElementById('s-qq').textContent = CONFIG.qq_group;
   document.getElementById('s-qq2').textContent = CONFIG.qq_group;
   document.getElementById('s-time').textContent = CONFIG.response_time;
   document.getElementById('s-note').textContent = CONFIG.note;
+
+  // 显示加载中
+  ['giftcard','ai'].forEach(cat => {
+    document.getElementById('grid-' + cat).innerHTML =
+      '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text3);font-size:13px;">商品加载中...</div>';
+  });
+
+  await loadProductsFromSupabase();
+
   const all = getAllProducts();
   const cats = {giftcard:0, ai:0};
   all.forEach(p => { if(cats[p.cat]!==undefined) cats[p.cat]++; });
