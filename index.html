@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>菠萝小铺 — 数字商品代购代充</title>
+<title>菠萝小铺 — 数字商品代购代充 v3</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -594,6 +594,11 @@ const CONFIG = {
 let cur = null, qty = 1;
 
 function startNotice() {
+  // 每个会话只弹一次
+  if (sessionStorage.getItem('notice_shown')) {
+    document.getElementById('notice-overlay').classList.remove('open');
+    return;
+  }
   document.getElementById('notice-body').textContent = CONFIG.announcement;
   let sec = 3;
   const btn = document.getElementById('notice-btn');
@@ -613,6 +618,7 @@ function startNotice() {
 function closeNotice() {
   const btn = document.getElementById('notice-btn');
   if (!btn.classList.contains('ready')) return;
+  sessionStorage.setItem('notice_shown', '1');
   document.getElementById('notice-overlay').classList.remove('open');
 }
 
