@@ -451,11 +451,10 @@ main { max-width: 640px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
         <div class="order-toolbar" id="orders-toolbar" style="display:none;">
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="order-select-all" onchange="toggleAllOrders(this.checked)"> 全选</label>
           <span id="selected-orders-count">已选 0 个</span>
-          <button class="mini-btn red" onclick="batchDeleteOrders()">批量删除未发货</button>
-          <button class="mini-btn red" onclick="batchCancelOrders()">批量取消未发货</button>
-          <button class="mini-btn green" onclick="batchMarkDelivered()">批量标记发货</button>
+          <button class="mini-btn red" onclick="batchDeleteOrders()">批量删除记录</button>
           <button class="mini-btn blue" onclick="copySelectedOrderNos()">复制订单号</button>
           <button class="mini-btn" onclick="renderOrdersList()">刷新</button>
+          <span style="font-size:11px;color:var(--text3);line-height:26px;">批量删除只处理「待确认/已取消」订单，已付款/已发货不会被删除</span>
         </div>
         <div id="orders-list"></div>
       </div>
@@ -999,21 +998,22 @@ async function renderOrdersList() {
       const orderNoArg = JSON.stringify(o.order_no || '');
       if (o.status === 'pending') {
         actions.push(`<button class="mini-btn green" onclick="confirmPaidOrder(${o.id}, ${orderNoArg}, ${o.product_id || 'null'}, ${o.quantity || 1})">确认付款</button>`);
-        actions.push(`<button class="mini-btn red" onclick="cancelOrder(${o.id}, ${orderNoArg})">取消</button>`);
+        actions.push(`<button class="mini-btn red" onclick="cancelOrder(${o.id}, ${orderNoArg})">标记取消</button>`);
+        actions.push(`<button class="mini-btn red" onclick="deleteOrder(${o.id}, ${orderNoArg}, '${escapeHtml(o.status || '')}')">删除记录</button>`);
       }
       if (o.status === 'paid') {
         actions.push(`<button class="mini-btn gold" onclick="assignCodesToOrder(${o.id}, ${orderNoArg}, ${o.product_id || 'null'}, ${o.quantity || 1})">分配/补发兑换码</button>`);
         actions.push(`<button class="mini-btn blue" onclick="copyOrderCodes(${orderNoArg})">复制兑换码</button>`);
         actions.push(`<button class="mini-btn green" onclick="markDelivered(${o.id}, ${orderNoArg})">标记发货</button>`);
+        actions.push(`<button class="mini-btn red" onclick="revokePaidOrder(${o.id}, ${orderNoArg})">撤销付款</button>`);
       }
       if (o.status === 'delivered') {
         actions.push(`<button class="mini-btn blue" onclick="copyOrderCodes(${orderNoArg})">复制兑换码</button>`);
         actions.push(`<button class="mini-btn gold" onclick="rollbackDelivery(${o.id}, ${orderNoArg})">撤回发货</button>`);
+        actions.push(`<span style="font-size:11px;color:var(--text3);padding:4px 0;">已发货不能删除</span>`);
       }
-      if (o.status !== 'delivered') {
-        actions.push(`<button class="mini-btn red" onclick="deleteOrder(${o.id}, ${orderNoArg}, '${escapeHtml(o.status || '')}')">删除</button>`);
-      } else {
-        actions.push(`<span style="font-size:11px;color:var(--text3);padding:4px 0;">已发货订单不可直接删除</span>`);
+      if (o.status === 'cancelled') {
+        actions.push(`<button class="mini-btn red" onclick="deleteOrder(${o.id}, ${orderNoArg}, '${escapeHtml(o.status || '')}')">删除记录</button>`);
       }
       return `
         <div style="border-bottom:1px solid var(--border);padding:12px 0;" data-order-row="${o.id}">
@@ -1154,7 +1154,7 @@ async function rollbackDelivery(id, orderNo) {
 }
 
 async function cancelOrder(id, orderNo) {
-  if (!confirm('确认取消这个订单？已绑定的兑换码会恢复到库存。')) return;
+  if (!confirm(`确认把这个订单标记为「已取消」？\n\n订单会保留在列表中，方便以后查记录。`)) return;
   try {
     await restoreOrderCards(orderNo);
     await sbUpdate('orders', { id }, { status: 'cancelled' }, adminToken);
@@ -1166,78 +1166,64 @@ async function cancelOrder(id, orderNo) {
   }
 }
 
-async function deleteOrder(id, orderNo, status) {
-  if (status === 'delivered') {
-    alert('已发货订单不能直接删除。请先确认售后退回的卡密未使用，再点击「撤回发货」恢复库存；撤回后可再删除订单。');
-    return;
-  }
-  const restoreNote = status === 'paid' ? '\n\n该订单处于已付款但未发货状态，如已绑定兑换码，删除时会恢复到库存。' : '';
-  if (!confirm(`确认删除订单 ${orderNo}？${restoreNote}`)) return;
+async function revokePaidOrder(id, orderNo) {
+  if (!confirm(`确认撤销这个订单的付款状态？\n\n系统会把订单改回「待确认」，并把已绑定的兑换码恢复到库存。这个操作适合：付款核对错误、客户退款、还没真正发货。`)) return;
   try {
-    if (status === 'paid') await restoreOrderCards(orderNo);
-    await sbDelete('orders', { id }, adminToken);
+    await restoreOrderCards(orderNo);
+    await sbUpdate('orders', { id }, { status: 'pending', paid_at: null, delivered_at: null }, adminToken);
     await renderOrdersList();
     await renderStockOverview();
     await renderRedeemList();
+    alert('已撤销付款，订单已回到「待确认」，绑定兑换码已恢复库存。');
   } catch(e) {
     console.error(e);
-    alert('删除失败，请检查 orders/cards 权限或刷新后重试');
+    alert('撤销付款失败，请刷新后重试');
+  }
+}
+
+async function deleteOrder(id, orderNo, status) {
+  if (status === 'delivered') {
+    alert('已发货订单不能删除。请先确认售后退回的卡密未使用，再点「撤回发货」。');
+    return;
+  }
+  if (status === 'paid') {
+    alert('已付款订单不建议直接删除。请先点「撤销付款」恢复库存并回到待确认，再按需要删除记录。');
+    return;
+  }
+  if (!confirm(`确认彻底删除订单记录 ${orderNo}？
+
+删除后后台列表不再显示这条订单。`)) return;
+  try {
+    await sbDelete('orders', { id }, adminToken);
+    await renderOrdersList();
+    alert('订单记录已删除。');
+  } catch(e) {
+    console.error(e);
+    alert('删除失败，请检查 orders 权限或刷新后重试');
   }
 }
 
 async function batchDeleteOrders() {
   const rows = getSelectedOrders();
   if (!rows.length) return alert('请先选中订单');
-  const delivered = rows.filter(o => o.status === 'delivered');
-  if (delivered.length) {
-    return alert(`已选订单中包含 ${delivered.length} 个已发货订单，不能直接删除。请先逐个撤回发货后再删除。`);
-  }
-  if (!confirm(`确认批量删除 ${rows.length} 个未发货订单？
+  const blocked = rows.filter(o => o.status === 'paid' || o.status === 'delivered');
+  if (blocked.length) {
+    return alert(`已选订单中有 ${blocked.length} 个「已付款/已发货」订单，不能批量删除。
 
-已付款但未发货订单如已绑定兑换码，会恢复到库存。`)) return;
+请先单独处理：已付款点「撤销付款」，已发货点「撤回发货」。`);
+  }
+  if (!confirm(`确认批量删除 ${rows.length} 条订单记录？
+
+只会删除「待确认/已取消」订单。`)) return;
   try {
     for (const o of rows) {
-      if (o.status === 'paid') await restoreOrderCards(o.order_no);
       await sbDelete('orders', { id: o.id }, adminToken);
     }
     await renderOrdersList();
-    await renderStockOverview();
-    await renderRedeemList();
+    alert('批量删除完成。');
   } catch(e) {
+    console.error(e);
     alert('批量删除失败，请刷新后重试');
-  }
-}
-
-async function batchCancelOrders() {
-  const rows = getSelectedOrders();
-  if (!rows.length) return alert('请先选中订单');
-  const delivered = rows.filter(o => o.status === 'delivered');
-  if (delivered.length) return alert(`已选订单中包含 ${delivered.length} 个已发货订单，不能批量取消。请先撤回发货。`);
-  if (!confirm(`确认批量取消 ${rows.length} 个未发货订单？已绑定的兑换码会恢复到库存。`)) return;
-  try {
-    for (const o of rows) {
-      await restoreOrderCards(o.order_no);
-      await sbUpdate('orders', { id: o.id }, { status: 'cancelled' }, adminToken);
-    }
-    await renderOrdersList();
-    await renderStockOverview();
-    await renderRedeemList();
-  } catch(e) {
-    alert('批量取消失败，请刷新后重试');
-  }
-}
-
-async function batchMarkDelivered() {
-  const rows = getSelectedOrders().filter(o => o.status === 'paid');
-  if (!rows.length) return alert('请选择状态为「已付款」的订单');
-  if (!confirm(`确认批量标记 ${rows.length} 个已付款订单为已发货？`)) return;
-  try {
-    for (const o of rows) {
-      await sbUpdate('orders', { id: o.id }, { status: 'delivered', delivered_at: new Date().toISOString() }, adminToken);
-    }
-    await renderOrdersList();
-  } catch(e) {
-    alert('批量标记失败，请刷新后重试');
   }
 }
 
