@@ -260,12 +260,37 @@ main { max-width: 1100px; margin: 0 auto; padding: 0 2.5rem 5rem; }
 .overlay.open { opacity: 1; pointer-events: all; }
 .modal {
   background: var(--white); border: 1px solid var(--border);
-  border-radius: 22px; width: 100%; max-width: 460px; padding: 2rem;
+  border-radius: 22px; width: 100%; max-width: 520px; padding: 1.55rem;
   box-shadow: var(--shadow-lg);
   transform: translateY(20px) scale(0.98); transition: transform 0.22s;
+  max-height: min(92vh, 900px); overflow: auto;
 }
 .overlay.open .modal { transform: translateY(0) scale(1); }
-.modal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+.modal-top {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  margin-bottom: 1.1rem;
+}
+.modal-media {
+  width: 100%; aspect-ratio: 1 / 1;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, #fffaf1 0%, #fff5e2 100%);
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+}
+.modal-media-img { width: 100%; height: 100%; object-fit: cover; display: none; }
+.modal-media-fallback {
+  font-size: 56px; line-height: 1;
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at center, #fff3cf 0%, #ffeab1 72%, #ffe39a 100%);
+}
+.modal-info { min-width: 0; }
+.modal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: .9rem; }
 .modal-close {
   width: 32px; height: 32px; border-radius: 50%;
   border: 1px solid var(--border); background: var(--cream2);
@@ -274,10 +299,10 @@ main { max-width: 1100px; margin: 0 auto; padding: 0 2.5rem 5rem; }
 }
 .modal-close:hover { background: var(--cream3); }
 .modal h2 { font-family: 'Noto Serif SC', serif; font-size: 19px; font-weight: 600; color: var(--text); line-height: 1.35; }
-.modal-desc { font-size: 13px; color: var(--text2); line-height: 1.6; margin-bottom: 1.25rem; }
+.modal-desc { font-size: 13px; color: var(--text2); line-height: 1.65; margin-bottom: 1rem; }
 .price-band {
   background: var(--cream); border: 1px solid var(--border); border-radius: var(--radius-sm);
-  padding: 12px 16px; display: flex; align-items: baseline; gap: 8px; margin-bottom: 1.25rem;
+  padding: 12px 16px; display: flex; align-items: baseline; gap: 8px; margin-bottom: 0;
 }
 .price-big { font-size: 28px; font-weight: 700; color: var(--accent); }
 .price-note { font-size: 12px; color: var(--text3); }
@@ -356,6 +381,13 @@ footer {
 @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
 .fade-up { animation: fadeUp 0.5s ease both; }
 
+
+@media(max-width:720px){
+  .modal { max-width: 460px; padding: 1.2rem; border-radius: 18px; }
+  .modal-top { grid-template-columns: 1fr; gap: 14px; }
+  .modal-media { max-width: 178px; margin: 0 auto; }
+}
+
 @media(max-width:700px){
   header{padding:0 1rem;}
   .announcement,.trust-bar{padding:10px 1rem;}
@@ -430,17 +462,25 @@ footer {
 <!-- 购买弹窗 -->
 <div class="overlay" id="modal" onclick="closeModalOut(event)">
   <div class="modal">
-    <div class="modal-header">
-      <div>
-        <div id="m-badge" style="margin-bottom:8px;"></div>
-        <h2 id="m-title"></h2>
+    <div class="modal-top">
+      <div class="modal-media">
+        <img id="m-img" class="modal-media-img" alt="商品图片" />
+        <div id="m-img-fallback" class="modal-media-fallback">🍍</div>
       </div>
-      <button class="modal-close" onclick="closeModal()">✕</button>
-    </div>
-    <p class="modal-desc" id="m-desc"></p>
-    <div class="price-band">
-      <div class="price-big" id="m-price"></div>
-      <div class="price-note" id="m-price-note"></div>
+      <div class="modal-info">
+        <div class="modal-header">
+          <div>
+            <div id="m-badge" style="margin-bottom:8px;"></div>
+            <h2 id="m-title"></h2>
+          </div>
+          <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <p class="modal-desc" id="m-desc"></p>
+        <div class="price-band">
+          <div class="price-big" id="m-price"></div>
+          <div class="price-note" id="m-price-note"></div>
+        </div>
+      </div>
     </div>
     <label class="form-label">购买数量</label>
     <div class="qty-row">
@@ -836,6 +876,23 @@ function openModal(id) {
   document.getElementById('m-price-note').textContent = cur.priceNote;
   document.getElementById('m-qty').textContent = 1;
   document.getElementById('m-contact').value = '';
+  const imgEl = document.getElementById('m-img');
+  const fallbackEl = document.getElementById('m-img-fallback');
+  const imgUrl = (cur.img || '').trim();
+  fallbackEl.textContent = cur.emoji || '🍍';
+  imgEl.onerror = function() {
+    imgEl.style.display = 'none';
+    fallbackEl.style.display = 'flex';
+  };
+  if (imgUrl) {
+    imgEl.src = imgUrl;
+    imgEl.style.display = 'block';
+    fallbackEl.style.display = 'none';
+  } else {
+    imgEl.removeAttribute('src');
+    imgEl.style.display = 'none';
+    fallbackEl.style.display = 'flex';
+  }
   const terms = document.getElementById('m-terms');
   if (terms) terms.checked = false;
   updateTotal();
